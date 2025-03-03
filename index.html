@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Blog</title>
+    <title>Duo</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -41,15 +41,25 @@
         .active {
             display: block;
         }
+        .about-content {
+            align-items: flex-start;
+        }
+        .about-image {
+            float:right;
+            width: 40%;
+            height: auto;
+            border-radius: 10px;
+            margin-left: 20px;
+        }
+        .about-text {
+            flex: 1;
+        }
     </style>
     <script>
         function showSection(sectionId) {
-            // Hide all sections
             document.getElementById("blog-section").style.display = "none";
             document.getElementById("about-section").style.display = "none";
             document.getElementById("contact-section").style.display = "none";
-
-            // Show the selected section
             document.getElementById(sectionId).style.display = "block";
         }
     </script>
@@ -57,7 +67,7 @@
 <body>
 
 <header>
-    <h1>My Blog</h1>
+    <h1>Duo</h1>
 </header>
 
 <nav>
@@ -69,58 +79,73 @@
 <div id="blog-section" class="container active">
     <h2>Latest Blog Posts</h2>
     <div class="post">
-        <h3>Web development has NO VALUE NOW!</h3>
+        <h3></h3>
         <p><small>Posted on March 2, 2025</small></p>
-        <p>I created this website in 10 seconds using ChatGPT. I used to be so proficient at web development. I made so many fancy websites, and I could get it done quickly...
-            I know so many JSs...Now thinking back, those skills are useless. It is a complete waste of time. 
-        </p>
-    </div>
-    <div class="post">
-        <h3>Starting this website</h3>
-        <p><small>Posted on March 2, 2025</small></p>
-        <p>I can't believe I wasted so much money on website hosting. I was paying more than 300 dollars for every 3 years of BlueHost hosting! I can't believe it is so expensive. 
-            Now I figured out this simple github thing. This is so neat. I used to admire like fancy website but now I realize it is all shit. Just vanity.
-            This simple HTML offers everything I need! I just type up here and it shows up online. It is great! Why would I waste so much money on the stupid bluehost hosting?!
-        </p>
-        <p>In the meantime, obviously, hats off to this simple github thing. This is awesome. </p>
+        <p></p>
     </div>
 </div>
 
 <div id="about-section" class="container section">
-    <h2>About Me</h2>
-    <p>I used to have a website hosted my bluehost, but you know what - they charge me over 300 dollars, big fucking US dollars, for three year term! 
-        OMG - I can't believe it is so expensive.
-        Three hundred dollars is like a VIP club membership.
-        I didn't realize it before.
-        I guess that was because I started with a promotional rate, and they have been charging me that much for YEARS, and I don't even know.
-        Hosting is unbelievably expensive...I simply have no money for it anymore.
-        It comes with backend and everything, you know, and database too.
-        Yeah it is kind of fancy...but what is the value? (It is rhetorical question. The answer is None.)
-        I am just blogging some random stuff. Who cares if the backend is a fancy MangoDB server or what??
-        The important thing is that I keep blogging. That is the real meaning of the website.
-        Now I just type up my stuff in the HTML and just upload it. It is all the same, actually better to be honest.
-        This is way simpler. You know what happened to my previous website? I never used it since 2019. Now it is 2025. Six years of wasted money on the stupid website! Especially the EXTRAVAGANT HOSTING!
-    </p>
-    <p>
-        Also, by the way, this github hosting thing is real dope.
-        You just create a repository and bam! You get a website showing up online! 
-        And the best part is? It is free!
-        They don't charge me 300 dollars just to get some HTML showing.
-        I still can't believe I was being so stupid and wasted more than 100 dollars per year on the dumb website.
-    </p>
-    <p>
-        Also, you know what - I made this website in 10 seconds. I am just blogging on this ChatGPT-created webpage.
-        Sigh - I used to be so passionate about web development. Now it has no value. Yeah the skill has literally zero value now.
-        I learned and learned so much about HTML, CSS, Javascript, PHP, JQuery, SQL, MangoDB, NodeJS, ReactJS and a million useless stupid JSs!
-        I even did an internship on it!
-        Thinking about this is ridiculous. Internship on making some stupid website??? Come on, you are better than this.
-        omg...WHAT A WASTE OF TIME!
-    </p>
+    <h2>Links</h2>
+    <a href="https://www.caltech.edu/">Caltech</a>
+    <a href="https://www.carleton.edu/">Carleton</a>
+    <a href="https://ligo.org/">LIGO</a>
+    <a href="https://www.piercelab.caltech.edu/">Pierce Lab</a>
+    <a href="https://www.nupack.org/">NUPACK</a>
+    
+    <h2>About Duo (as of year 2025)</h2>
+    <div class="about-content">
+        <img src="photo.jpg" alt="Picture of Duo" class="about-image">
+        <div class="about-text">
+            <p>I don't really know what to put here to be honest.</p>
+            <p>I am a graduate student at Caltech.</p>
+            <p>The ultimate goal of my life is to use technologies to improve human health, making people live longer and better!
+            </p>
+            <p>I went to Carleton College and studied computer science and physics there.</p>
+            <p>And what else? I used to work in LIGO. I worked on some data analysis & visualization, simulations, algorithms, web development, electronics, and a little bit of experimental optics too. 
+                I am really bad at experimental optics though.</p>
+            <p>Now I study nucleic acids kinetics in the Pierce lab - i.e. how nucleic acids fold and react with each other!</p>
+            <p>Our lab develops software too (NUPACK)!</p>
+            <p>Hmmm... I don't really have a lot of hobbies. I like playing basketball though, but I don't think anyone cares.</p>
+            <p>I would say my expertise is in simulating large molecules. 
+                In terms of my skill and knowledge, you can generalize it to this: I use statistics to attack problems, and I design algorithms to obtain the statistics.  </p>
+        </div>
+    </div>
+    <h2>About the website</h2>
+    <div class="about-content">
+        <div class="about-text">
+            <p>I used to have another domain name. It was hosted on BlueHost. I just realized that the hosting was so expensive. 
+                They were charging me more than 300 dollars for every 3-year term.
+                It is crazy! I simply have no money for it anymore.
+                Yeah it is kind of fancy - it has backend PHP, database etc., but I don't really need it.
+                It is nothing but vanity, offering me absolutely no value!
+                This simple HTML is perfect for me.
+                I just write my stuff directly in the HTML and push it.
+                That is so simple and just neat workflow.
+                You know what happened to my old website?
+                It is so complicated to use that I have never updated it for five years!
+                And I was wasting 500 dollars on it!
+                Hats off to this little Github domain though - and no more extravagant website hosting!
+                I would even rather spend the money on a Japanese Omakase than something that has absolutely no value in it!
+            </p>
+            <p>
+                I also made this thing in like 10 seconds using ChatGPT.
+                Oh man, I used to be so passionate about web development.
+                I spent so much time learning about it, HTML, CSS, Javascript, JQuery, PHP, NodeJS and a million other JSs...
+                I even did an internship just making websites.
+                That were times when I was so proud of my skills.
+                Now it is almost useless and thinking back, yeah it is a waste of time.
+                This skill has no value now. Sigh.
+            </p>
+        </div>
+    </div>
 </div>
 
 <div id="contact-section" class="container section">
     <h2>Contact Me</h2>
-    <p>Please don't contact me. If you have to, just knock on my door. I prefer in-person conversation.</p>
+    <p>I have a gmail: duo.tao.2017</p>
+    <p>However, I always prefer in-person communication.</p>
+    <p>So just knock on my door and talk to me face-to-face.</p>
 </div>
 
 </body>
