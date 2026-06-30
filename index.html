@@ -252,9 +252,12 @@ function handleNumber(n) {
 
     let req = new XMLHttpRequest();
     req.onreadystatechange = () => {
-    if (req.readyState == XMLHttpRequest.DONE) {
-        console.log(req.responseText);
-    }
+        if (req.readyState == XMLHttpRequest.DONE) {
+            console.log(req.responseText);
+
+            // refresh page so chart reloads new data
+            location.reload();
+        }
     };
 
     req.open("PUT", "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217", true);
