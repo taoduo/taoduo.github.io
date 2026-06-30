@@ -245,14 +245,10 @@ req.send();
 <script>
 // --- your function that uses the number ---
 function handleNumber(n) {
-    // append n to y
     y.push(n);
 
-    // reverse y (in-place)
-    y.reverse();
-
-    // convert to JSON string
-    let json = JSON.stringify(y);
+    // Create a reversed copy for uploading
+    const json = JSON.stringify([...y].reverse());
 
     let req = new XMLHttpRequest();
     req.onreadystatechange = () => {
