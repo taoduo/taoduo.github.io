@@ -267,6 +267,41 @@ function handleNumber(n) {
     req.send(json);
 }
 
+function deleteLatest() {
+    if (!y || y.length === 0) {
+        alert("没有数据可删除。");
+        return;
+    }
+
+    if (!confirm(`确定删除最新记录（${y[y.length - 1]} kg）吗？`)) {
+        return;
+    }
+
+    // Remove newest measurement
+    y.pop();
+
+    // Upload in the original order expected by your JSON bin
+    const json = JSON.stringify([...y].reverse());
+
+    let req = new XMLHttpRequest();
+    req.onreadystatechange = () => {
+        if (req.readyState == XMLHttpRequest.DONE) {
+            console.log(req.responseText);
+
+            // Optional: refresh the page so the graph updates
+            location.reload();
+        }
+    };
+
+    req.open("PUT", "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217", true);
+    req.setRequestHeader("Content-Type", "application/json");
+    req.setRequestHeader(
+        "X-Master-Key",
+        "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW"
+    );
+    req.send(json);
+}
+
 // --- create popup UI once ---
 const popup = document.createElement("div");
 popup.style.position = "fixed";
@@ -325,6 +360,8 @@ document.addEventListener("keydown", (e) => {
 
     if (e.key === "q") {
         showPopup();
+    } else if (e.key === "p") {
+        deleteLatest();
     }
 });
 </script>
