@@ -336,8 +336,15 @@ function hidePopup() {
 // --- submit logic ---
 function submit() {
     const val = parseFloat(input.value);
-    if (!isNaN(val)) {
-        hidePopup();
+
+    if (isNaN(val)) return;
+
+    hidePopup();
+
+    // special rule: 0 → null
+    if (val === 0) {
+        handleNumber(null);
+    } else {
         handleNumber(val);
     }
 }
