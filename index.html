@@ -370,6 +370,11 @@ document.addEventListener("keydown", (e) => {
         deleteLatest();
     }
 });
+document.addEventListener("keydown", function(event) {
+    if (event.key.toLowerCase() === "g") {
+        window.location.href = "gen.html";
+    }
+});
 </script>
 </body>
 </html>
