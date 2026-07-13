@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div id="date"></div>
+<h1>Daily Curated Choices</h1>
+<div id="meal">
+    <button id="generate-breakfast">🍳 Generate Breakfast</button>
+    <button id="generate-lunch">🥗 Generate Lunch</button>
+    <button id="generate-coffee">☕ Generate Coffee</button>
+</div>
+
+<br>
+<title>Food Inventory</title>
+<style>
+body {
+    font-family: Georgia, "Times New Roman", serif;
+    max-width: 1100px;
+    margin: 50px auto;
+    padding: 0 30px;
+    background: #faf8f3;
+    color: #2b2b2b;
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 400;
+    letter-spacing: 1px;
+    margin-bottom: 40px;
+}
+
+#meal {
+    text-align: center;
+    margin-bottom: 45px;
+    min-height: 80px;
+}
+
+#meal h2 {
+    font-size: 1.8rem;
+    font-weight: 400;
+    padding: 25px;
+    border: 1px solid #ddd5c8;
+    background: #fffdf8;
+    border-radius: 12px;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+
+#meal button {
+    margin: 8px;
+    padding: 14px 28px;
+    font-family: inherit;
+    font-size: 1rem;
+    border-radius: 999px;
+    border: 1px solid #cfc4b4;
+    background: #fffdf8;
+    color: #3b352d;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#meal button:hover {
+    background: #3b352d;
+    color: #fffdf8;
+    transform: translateY(-2px);
+}
+
+#inventory {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+}
+
+.column {
+    background: #fffdf8;
+    border: 1px solid #e2dacd;
+    border-radius: 12px;
+    padding: 22px;
+}
+
+.column h2 {
+    margin-top: 0;
+    font-size: 1.3rem;
+    font-weight: 400;
+    text-transform: capitalize;
+    border-bottom: 1px solid #e2dacd;
+    padding-bottom: 10px;
+}
+
+ul {
+    padding-left: 20px;
+    margin-bottom: 0;
+}
+
+li {
+    margin: 8px 0;
+    color: #555;
+}
+
+@media (max-width: 800px) {
+    #inventory {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    #inventory {
+        grid-template-columns: 1fr;
+    }
+}
+#date {
+    text-align: center;
+    font-size: 0.95rem;
+    color: #777;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+<div id="inventory">Loading...</div>
+
+<script>
+const BIN_ID = "6a533501f5f4af5e29833513";
+const API_KEY = "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW";
+
+let inventory = {};
+
+async function loadInventory() {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+        headers: {
+            "X-Master-Key": API_KEY
+        }
+    });
+
+    inventory = (await res.json()).record;
+
+    const container = document.getElementById("inventory");
+    container.innerHTML = "";
+
+    for (const [category, items] of Object.entries(inventory)) {
+        const column = document.createElement("div");
+        column.className = "column";
+
+        const h2 = document.createElement("h2");
+        h2.textContent = category;
+
+        const ul = document.createElement("ul");
+
+        items.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            ul.appendChild(li);
+        });
+
+        column.appendChild(h2);
+        column.appendChild(ul);
+        container.appendChild(column);
+    }
+}
+
+function randomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+function showResult(text, emoji) {
+    document.getElementById("meal").innerHTML = `<h2>${emoji} ${text}</h2>`;
+}
+
+function randomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+document.getElementById("generate-breakfast").onclick = () => {
+    showResult(
+        [
+            randomItem(inventory.protein),
+            randomItem(inventory.fruit),
+            randomItem(inventory.carbs),
+            randomItem(inventory.fat)
+        ].join(" + "),
+        "🍳"
+    );
+};
+
+document.getElementById("generate-lunch").onclick = () => {
+    showResult(randomItem(inventory.lunch), "🥗");
+};
+
+document.getElementById("generate-coffee").onclick = () => {
+    showResult(randomItem(inventory.coffee), "☕");
+};
+loadInventory().catch(err => {
+    document.getElementById("inventory").textContent = "Failed to load inventory.";
+    console.error(err);
+});
+function updateDate() {
+    const today = new Date();
+
+    const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    };
+
+    document.getElementById("date").textContent =
+        today.toLocaleDateString("en-US", options);
+}
+
+updateDate();
+</script>
+
+</body>
+</html>
