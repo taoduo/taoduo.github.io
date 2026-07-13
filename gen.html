@@ -6,9 +6,10 @@
 <div id="date"></div>
 <h1>Daily Curated Choices</h1>
 <div id="meal">
-    <button id="generate-breakfast">🍳 Generate Breakfast</button>
-    <button id="generate-lunch">🥗 Generate Lunch</button>
-    <button id="generate-coffee">☕ Generate Coffee</button>
+    <button id="generate-breakfast">🍳 Breakfast?</button>
+    <button id="generate-lunch">🥗 Restaurant?</button>
+    <button id="generate-coffee">☕ Coffee?</button>
+    <button id="generate-sweets">🍰 Sweet   ?</button>
 </div>
 
 <br>
@@ -190,6 +191,15 @@ document.getElementById("generate-lunch").onclick = () => {
 
 document.getElementById("generate-coffee").onclick = () => {
     showResult(randomItem(inventory.coffee), "☕");
+};
+
+document.getElementById("generate-sweets").onclick = () => {
+    const haveSweets = Math.floor(Math.random() * 7) === 0;
+
+    showResult(
+        haveSweets ? "Yes!" : "No",
+        haveSweets ? "🍰" : "🚫"
+    );
 };
 loadInventory().catch(err => {
     document.getElementById("inventory").textContent = "Failed to load inventory.";
