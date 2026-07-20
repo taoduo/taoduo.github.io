@@ -10,7 +10,7 @@
     <button id="generate-coffee">☕ Coffee?</button>
     <button id="generate-sweets">🍰 Sweet   ?</button>
 </div>
-
+<div id="laundry"></div>
 <br>
 <title>Food Inventory</title>
 <style>
@@ -67,16 +67,6 @@ h1 {
     transform: translateY(-2px);
 }
 
-
-
-
-
-
-
-
-
-
-
 #date {
     text-align: center;
     font-size: 0.95rem;
@@ -89,6 +79,25 @@ h1 {
 <body>
 
 <script>
+const laundrySchedule = {
+    "Clothes": 1,
+    "Sheets and pillow cases": 1,
+    "Bathmat": 4,
+    "Boxer": 1
+};
+
+const today = new Date();
+if (today.getDay() === 0) {
+    const list = Object.entries(laundrySchedule)
+        .map(([item, weeks]) => `${item} (${weeks} wk)`)
+        .join("<br>");
+
+    document.getElementById("laundry").innerHTML = `
+        <h2>🧺 Laundry Day</h2>
+        <p>${list}</p>
+    `;
+}
+
 const inventory = {
     lunch: [
         "Erewhon",
@@ -104,7 +113,6 @@ const inventory = {
         "Blue Bottle",
         "Klatch",
         "Fika Fika",
-        "Coffee JPG",
         "Three Fields",
         "Kaldi",
         "Euclid Coffee"
