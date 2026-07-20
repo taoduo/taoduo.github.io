@@ -6,7 +6,6 @@
 <div id="date"></div>
 <h1>Daily Curated Choices</h1>
 <div id="meal">
-    <button id="generate-breakfast">🍳 Breakfast?</button>
     <button id="generate-lunch">🥗 Restaurant?</button>
     <button id="generate-coffee">☕ Coffee?</button>
     <button id="generate-sweets">🍰 Sweet   ?</button>
@@ -68,49 +67,16 @@ h1 {
     transform: translateY(-2px);
 }
 
-#inventory {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 25px;
-}
 
-.column {
-    background: #fffdf8;
-    border: 1px solid #e2dacd;
-    border-radius: 12px;
-    padding: 22px;
-}
 
-.column h2 {
-    margin-top: 0;
-    font-size: 1.3rem;
-    font-weight: 400;
-    text-transform: capitalize;
-    border-bottom: 1px solid #e2dacd;
-    padding-bottom: 10px;
-}
 
-ul {
-    padding-left: 20px;
-    margin-bottom: 0;
-}
 
-li {
-    margin: 8px 0;
-    color: #555;
-}
 
-@media (max-width: 800px) {
-    #inventory {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
 
-@media (max-width: 500px) {
-    #inventory {
-        grid-template-columns: 1fr;
-    }
-}
+
+
+
+
 #date {
     text-align: center;
     font-size: 0.95rem;
@@ -121,46 +87,29 @@ li {
 </style>
 </head>
 <body>
-<div id="inventory">Loading...</div>
 
 <script>
-const BIN_ID = "6a533501f5f4af5e29833513";
-const API_KEY = "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW";
-
-let inventory = {};
-
-async function loadInventory() {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-        headers: {
-            "X-Master-Key": API_KEY
-        }
-    });
-
-    inventory = (await res.json()).record;
-
-    const container = document.getElementById("inventory");
-    container.innerHTML = "";
-
-    for (const [category, items] of Object.entries(inventory)) {
-        const column = document.createElement("div");
-        column.className = "column";
-
-        const h2 = document.createElement("h2");
-        h2.textContent = category;
-
-        const ul = document.createElement("ul");
-
-        items.forEach(item => {
-            const li = document.createElement("li");
-            li.textContent = item;
-            ul.appendChild(li);
-        });
-
-        column.appendChild(h2);
-        column.appendChild(ul);
-        container.appendChild(column);
-    }
-}
+const inventory = {
+    lunch: [
+        "Erewhon",
+        "Urbane Cafe",
+        "Urban Plates",
+        "Mendocino Farms",
+        "Cava",
+        "Panda Express"
+    ],
+    coffee: [
+        "Intelligentsia",
+        "Copa Vida",
+        "Blue Bottle",
+        "Klatch",
+        "Fika Fika",
+        "Coffee JPG",
+        "Three Fields",
+        "Kaldi",
+        "Euclid Coffee"
+    ]
+};
 
 function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
@@ -169,21 +118,6 @@ function showResult(text, emoji) {
     document.getElementById("meal").innerHTML = `<h2>${emoji} ${text}</h2>`;
 }
 
-function randomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
-
-document.getElementById("generate-breakfast").onclick = () => {
-    showResult(
-        [
-            randomItem(inventory.protein),
-            randomItem(inventory.fruit),
-            randomItem(inventory.carbs),
-            randomItem(inventory.fat)
-        ].join(" + "),
-        "🍳"
-    );
-};
 
 document.getElementById("generate-lunch").onclick = () => {
     showResult(randomItem(inventory.lunch), "🥗");
@@ -201,10 +135,6 @@ document.getElementById("generate-sweets").onclick = () => {
         haveSweets ? "🍰" : "🚫"
     );
 };
-loadInventory().catch(err => {
-    document.getElementById("inventory").textContent = "Failed to load inventory.";
-    console.error(err);
-});
 function updateDate() {
     const today = new Date();
 
