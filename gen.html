@@ -8,9 +8,16 @@
 <div id="meal">
     <button id="generate-lunch">🥗 Restaurant?</button>
     <button id="generate-coffee">☕ Coffee?</button>
-    <button id="generate-sweets">🍰 Sweet   ?</button>
+    <button id="generate-sweets">🍰 Sweet?</button>
+    <button id="generate-favorite">⭐ Golden Triangle Favorites</button>
 </div>
 <div id="laundry"></div>
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span id="close-modal" class="close">&times;</span>
+        <div id="modal-body"></div>
+    </div>
+</div>
 <br>
 <title>Choices and Reminders</title>
 <style>
@@ -74,6 +81,59 @@ h1 {
     letter-spacing: 1px;
     margin-bottom: 12px;
 }
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+}
+
+.modal-content {
+    background: #fffdf8;
+    max-width: 650px;
+    margin: 8vh auto;
+    padding: 35px;
+    border-radius: 14px;
+    border: 1px solid #ddd5c8;
+    box-shadow: 0 15px 40px rgba(0,0,0,.15);
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #888;
+}
+
+.close:hover {
+    color: black;
+}
+
+#modal-body h2 {
+    margin-top: 0;
+    text-align: center;
+    font-weight: 400;
+}
+
+.favorites-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0 0;
+}
+
+.favorites-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid #e8e1d6;
+    font-size: 1.15rem;
+}
+
+.favorites-list li:last-child {
+    border-bottom: none;
+}
 </style>
 </head>
 <body>
@@ -83,13 +143,13 @@ const laundrySchedule = {
     "Clothes": 1,
     "Sheets and pillow cases": 1,
     "Bathmat": 4,
-    "Boxer": 1
+    "Sleepwear": 1
 };
 
 const today = new Date();
 if (today.getDay() === 2) {
     const list = Object.entries(laundrySchedule)
-        .map(([item, weeks]) => `${item} (${weeks} wk)`)
+        .map(([item, weeks]) => `${item}`)
         .join("<br>");
 
     document.getElementById("laundry").innerHTML = `
@@ -115,18 +175,46 @@ const inventory = {
         "Fika Fika",
         "Three Fields",
         "Kaldi",
-        "Euclid Coffee"
+        "Euclid Coffee",
+        "Republic Coffee"
     ]
 };
+const favorites = [
+    "Matu",
+    "Loukà Beverly Hills",
+    "Very Thai"
+];
 
 function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 function showResult(text, emoji) {
-    document.getElementById("meal").innerHTML = `<h2>${emoji} ${text}</h2>`;
+    showModal(`
+        <h2>${emoji}</h2>
+        <p style="text-align:center;font-size:1.4rem;">
+            ${text}
+        </p>
+    `);
+}
+function showHTML(html) {
+    document.getElementById("meal").innerHTML = html;
+}
+function showModal(html) {
+    document.getElementById("modal-body").innerHTML = html;
+    document.getElementById("modal").style.display = "block";
 }
 
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
 
+document.getElementById("close-modal").onclick = closeModal;
+
+window.onclick = function(e) {
+    if (e.target === document.getElementById("modal")) {
+        closeModal();
+    }
+};
 document.getElementById("generate-lunch").onclick = () => {
     showResult(randomItem(inventory.lunch), "🥗");
 };
@@ -143,6 +231,10 @@ document.getElementById("generate-sweets").onclick = () => {
         haveSweets ? "🍰" : "🚫"
     );
 };
+document.getElementById("generate-favorite").onclick = () => {
+    showResult(randomItem(favorites), "⭐");
+};
+
 function updateDate() {
     const today = new Date();
 
