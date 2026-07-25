@@ -3,22 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<div id="date"></div>
-<h1>Daily Curated Choices</h1>
-<div id="meal">
-    <button id="generate-lunch">🥗 Restaurant?</button>
-    <button id="generate-coffee">☕ Coffee?</button>
-    <button id="generate-sweets">🍰 Sweet?</button>
-    <button id="generate-favorite">⭐ Golden Triangle Favorites</button>
-</div>
-<div id="laundry"></div>
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <span id="close-modal" class="close">&times;</span>
-        <div id="modal-body"></div>
-    </div>
-</div>
-<br>
 <title>Choices and Reminders</title>
 <style>
 body {
@@ -134,29 +118,130 @@ h1 {
 .favorites-list li:last-child {
     border-bottom: none;
 }
+#laundry,
+#chores {
+    display: none;
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 18px;
+    background: #fffdf8;
+    border: 1px solid #e2dacd;
+    border-radius: 12px;
+}
+
+.reminder-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+}
+
+.reminder-list li {
+    margin: 8px 0;
+}
 </style>
 </head>
 <body>
+<div id="date"></div>
 
+<h1>Daily Curated Choices</h1>
+
+<div id="meal">
+    <button id="generate-lunch">🥗 Restaurant?</button>
+    <button id="generate-coffee">☕ Coffee?</button>
+    <button id="generate-sweets">🍰 Sweet?</button>
+    <button id="generate-favorite">⭐ Golden Triangle</button>
+</div>
+
+<div id="laundry"></div>
+<div id="chores"></div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span id="close-modal" class="close">&times;</span>
+        <div id="modal-body"></div>
+    </div>
+</div>
 <script>
+const referenceWeek = new Date("2026-07-21");
+const laundryDay = 2;
 const laundrySchedule = {
-    "Clothes": 1,
-    "Sheets and pillow cases": 1,
+    "Hamper": 1,
+    "Sheets": 1,
     "Bathmat": 4,
-    "Sleepwear": 1
+    "Sleepwear": 1,
+    "Bath Towel": 1
 };
 
-const today = new Date();
-if (today.getDay() === 2) {
-    const list = Object.entries(laundrySchedule)
-        .map(([item, weeks]) => `${item}`)
-        .join("<br>");
+const choreSchedule = {
+    "Check Mail": [5, 1],
+    "Change Bath Towel": [4, 1],
+    "Wash Water Pitchers": [3, 1]
+};
 
-    document.getElementById("laundry").innerHTML = `
-        <h2>🧺 Laundry Day</h2>
-        <p>${list}</p>
-    `;
+function getWeeksElapsed() {
+    const today = new Date();
+
+    return Math.floor(
+        (today - referenceWeek) /
+        (1000 * 60 * 60 * 24 * 7)
+    );
 }
+
+function getLaundryList() {
+    const today = new Date();
+
+    if (today.getDay() !== laundryDay) return [];
+
+    const weeks = getWeeksElapsed();
+
+    return Object.entries(laundrySchedule)
+        .filter(([_, interval]) => weeks % interval === 0)
+        .map(([item]) => item);
+}
+
+function getChoreList() {
+    const today = new Date();
+    const weeks = getWeeksElapsed();
+
+    return Object.entries(choreSchedule)
+        .filter(([_, [day, interval]]) =>
+            today.getDay() === day &&
+            weeks % interval === 0
+        )
+        .map(([item]) => item);
+}
+
+function showReminder(id, title, emoji, items) {
+    const div = document.getElementById(id);
+
+    if (items.length === 0) {
+        div.style.display = "none";
+        return;
+    }
+
+    div.innerHTML = `
+        <h2>${emoji} ${title}</h2>
+        <ul class="reminder-list">
+            ${items.map(item => `<li>${item}</li>`).join("")}
+        </ul>
+    `;
+
+    div.style.display = "block";
+}
+
+showReminder(
+    "laundry",
+    "Laundry Today",
+    "🧺",
+    getLaundryList()
+);
+
+showReminder(
+    "chores",
+    "Today's Chores",
+    "🧹",
+    getChoreList()
+);
 
 const inventory = {
     lunch: [
@@ -205,9 +290,7 @@ function showResult(text, emoji) {
         </p>
     `);
 }
-function showHTML(html) {
-    document.getElementById("meal").innerHTML = html;
-}
+
 function showModal(html) {
     document.getElementById("modal-body").innerHTML = html;
     document.getElementById("modal").style.display = "block";
