@@ -312,7 +312,12 @@ document.getElementById("generate-lunch").onclick = () => {
 };
 
 document.getElementById("generate-coffee").onclick = () => {
-    showResult(randomItem(inventory.coffee), "☕");
+    const makeOwn = Math.floor(Math.random() * 7) !== 0;
+
+    showResult(
+        makeOwn ? "Make my own ☕" : randomItem(inventory.coffee),
+        "☕"
+    );
 };
 
 document.getElementById("generate-sweets").onclick = () => {
