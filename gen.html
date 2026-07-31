@@ -307,7 +307,12 @@ window.onclick = function(e) {
     }
 };
 document.getElementById("generate-lunch").onclick = () => {
-    showResult(randomItem(inventory.lunch), "🥗");
+    const makeOwn = Math.floor(Math.random() * 7) !== 0;
+
+    showResult(
+        makeOwn ? "Make My Own 🥗" : randomItem(inventory.lunch),
+        "🥗"
+    );
 };
 
 document.getElementById("generate-coffee").onclick = () => {
