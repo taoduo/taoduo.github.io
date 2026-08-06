@@ -163,21 +163,17 @@ h1 {
 </div>
 <script>
 const referenceWeek = new Date("2026-07-21");
-const laundryDay = 2;
-const laundrySchedule = {
-    "Hamper": 1,
-    "Sheets": 1,
-    "Bathmat": 4,
-    "Sleepwear": 1,
-    "Bath Towel": 1
-};
 
 const choreSchedule = {
-    "Wash All Trays, Holders and Racks": [1, 4],
-    "Check Mail": [5, 1],
-    "Change Bath Towel": [4, 1],
-    "Wipe Down Surfaces": [3, 1],
-    "Mop the Tiles": [5, 1]
+    "Wash two trays, dish rack": [1, 4],
+    "Laundry: hamper, sleepwear, towels": [2, 1],
+    "Wipe down surfaces": [3, 1],
+    "Laundry: sheet, pillow cases": [4, 1],
+    "Laundry: duvet": [4, 2],
+    "Laundry: bathmat": [4, 4],
+    "Change bath towel": [4, 1],
+    "Check mail": [5, 1],
+    "Mopping": [5, 1]
 };
 
 function getWeeksElapsed() {
@@ -187,18 +183,6 @@ function getWeeksElapsed() {
         (today - referenceWeek) /
         (1000 * 60 * 60 * 24 * 7)
     );
-}
-
-function getLaundryList() {
-    const today = new Date();
-
-    if (today.getDay() !== laundryDay) return [];
-
-    const weeks = getWeeksElapsed();
-
-    return Object.entries(laundrySchedule)
-        .filter(([_, interval]) => weeks % interval === 0)
-        .map(([item]) => item);
 }
 
 function getChoreList() {
@@ -232,13 +216,6 @@ function showReminder(id, title, emoji, items) {
 }
 
 showReminder(
-    "laundry",
-    "Laundry Today",
-    "🧺",
-    getLaundryList()
-);
-
-showReminder(
     "chores",
     "Today's Chores",
     "🧹",
@@ -246,24 +223,15 @@ showReminder(
 );
 
 const inventory = {
-    lunch: [
-        "Erewhon",
-        "Urbane Cafe",
-        "Urban Plates",
-        "Mendocino Farms",
-        "Cava",
-        "Panda Express"
-    ],
     coffee: [
         "Intelligentsia",
-        "Blue Bottle",
         "Klatch",
         "Fika Fika",
         "Kaldi",
         "Euclid Coffee",
-        "Republic Coffee"
     ]
 };
+
 const favorites = [
     "Matu",
     "Loukà",
@@ -311,7 +279,7 @@ document.getElementById("generate-lunch").onclick = () => {
     const makeOwn = Math.floor(Math.random() * 7) !== 0;
 
     showResult(
-        makeOwn ? "Make My Own 🥗" : randomItem(inventory.lunch),
+        makeOwn ? "Make My Own" : "Go to a Restaurant",
         "🥗"
     );
 };
