@@ -152,10 +152,8 @@ h1 {
     <button id="generate-favorite">⭐ Golden Triangle Restaurant?</button>
     <button id="pant-button">👖 Pants?</button>
 </div>
-
 <div id="laundry"></div>
 <div id="chores"></div>
-
 <div id="modal" class="modal">
     <div class="modal-content">
         <span id="close-modal" class="close">&times;</span>
@@ -178,6 +176,27 @@ const choreSchedule = {
     "Mopping": [5, 1]
 };
 const pants = ["Green", "Beige", "Blue"];
+const coffee = [
+    "Intelligentsia",
+    "Klatch",
+    "Fika Fika",
+    "Kaldi",
+    "Euclid Coffee",
+];
+const favorites = [
+    "Matu",
+    "Loukà",
+    "Very Thai",
+    "Novikov",
+    "Azur",
+    "Khinkali",
+    "Avra",
+    "Bacari",
+    "Nua",
+    "Hideaway",
+    "La ong",
+    "Mr. Chow"
+];
 function getWeeksElapsed() {
     const today = new Date();
 
@@ -251,33 +270,14 @@ showReminder(
     getChoreList()
 );
 
-const inventory = {
-    coffee: [
-        "Intelligentsia",
-        "Klatch",
-        "Fika Fika",
-        "Kaldi",
-        "Euclid Coffee",
-    ]
-};
 
-const favorites = [
-    "Matu",
-    "Loukà",
-    "Very Thai",
-    "Novikov",
-    "Azur",
-    "Khinkali",
-    "Avra",
-    "Bacari",
-    "Nua",
-    "Hideaway",
-    "La ong",
-    "Mr. Chow"
-];
 
 function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
+}
+function showModal(html) {
+    document.getElementById("modal-body").innerHTML = html;
+    document.getElementById("modal").style.display = "block";
 }
 function showResult(text, emoji) {
     showModal(`
@@ -286,11 +286,6 @@ function showResult(text, emoji) {
             ${text}
         </p>
     `);
-}
-
-function showModal(html) {
-    document.getElementById("modal-body").innerHTML = html;
-    document.getElementById("modal").style.display = "block";
 }
 
 function closeModal() {
@@ -317,7 +312,7 @@ document.getElementById("generate-coffee").onclick = () => {
     const makeOwn = Math.floor(Math.random() * 7) !== 0;
 
     showResult(
-        makeOwn ? "Make My Own ☕" : randomItem(inventory.coffee),
+        makeOwn ? "Make My Own ☕" : randomItem(coffee),
         "☕"
     );
 };
