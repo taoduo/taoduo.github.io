@@ -150,6 +150,7 @@ h1 {
     <button id="generate-coffee">☕ Coffee?</button>
     <button id="generate-sweets">🍰 Sweet?</button>
     <button id="generate-favorite">⭐ Golden Triangle Restaurant?</button>
+    <button id="pant-button">👖 Pants?</button>
 </div>
 
 <div id="laundry"></div>
@@ -167,6 +168,7 @@ const referenceWeek = new Date("2026-07-21");
 const choreSchedule = {
     "Wash two trays, dish rack": [1, 4],
     "Laundry: hamper, sleepwear, towels": [2, 1],
+    "Laundry: pants": [6, 3],
     "Wipe down surfaces": [3, 1],
     "Laundry: sheet, pillow cases": [4, 1],
     "Laundry: duvet": [4, 2],
@@ -175,7 +177,7 @@ const choreSchedule = {
     "Check mail": [5, 1],
     "Mopping": [5, 1]
 };
-
+const pants = ["Green", "Beige", "Blue"];
 function getWeeksElapsed() {
     const today = new Date();
 
@@ -195,6 +197,33 @@ function getChoreList() {
             weeks % interval === 0
         )
         .map(([item]) => item);
+}
+
+function getPantToday() {
+    const today = new Date();
+
+    // Monday = 1 ... Friday = 5
+    const day = today.getDay();
+
+    if (day < 1 || day > 5) return null;
+
+    const weeksElapsed = Math.floor(
+        (today - referenceWeek) / (1000 * 60 * 60 * 24 * 7)
+    );
+
+    const rotation = weeksElapsed % 3;
+
+    // Rotate A,B,C together
+    const weekly = [
+        pants[rotation],
+        pants[(rotation + 1) % 3],
+        pants[(rotation + 2) % 3]
+    ];
+
+    // Pattern: A B C A B
+    const pattern = [0, 1, 2, 0, 1];
+
+    return weekly[pattern[day - 1]];
 }
 
 function showReminder(id, title, emoji, items) {
@@ -292,7 +321,14 @@ document.getElementById("generate-coffee").onclick = () => {
         "☕"
     );
 };
+document.getElementById("pant-button").onclick = () => {
+    const pant = getPantToday();
 
+    showResult(
+        pant ?? "It's the weekend!",
+        "👖"
+    );
+};
 document.getElementById("generate-sweets").onclick = () => {
     const haveSweets = Math.floor(Math.random() * 7) === 0;
 
