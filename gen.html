@@ -146,8 +146,7 @@ h1 {
 <h1>Daily Curated Choices</h1>
 
 <div id="meal">
-    <button id="generate-lunch">🥗 Restaurant?</button>
-    <button id="generate-coffee">☕ Coffee?</button>
+    <button id="generate-choice">🥗 Cooking?</button>
     <button id="generate-sweets">🍰 Sweet?</button>
     <button id="generate-favorite">⭐ Golden Triangle Restaurant?</button>
     <button id="pant-button">👖 Pants?</button>
@@ -279,9 +278,8 @@ function showModal(html) {
     document.getElementById("modal-body").innerHTML = html;
     document.getElementById("modal").style.display = "block";
 }
-function showResult(text, emoji) {
+function showResult(text) {
     showModal(`
-        <h2>${emoji}</h2>
         <p style="text-align:center;font-size:1.4rem;">
             ${text}
         </p>
@@ -299,41 +297,33 @@ window.onclick = function(e) {
         closeModal();
     }
 };
-document.getElementById("generate-lunch").onclick = () => {
+
+document.getElementById("generate-choice").onclick = () => {
     const makeOwn = Math.floor(Math.random() * 7) !== 0;
 
     showResult(
-        makeOwn ? "Make My Own" : "Go to a Restaurant",
-        "🥗"
+        makeOwn
+            ? "Home cooking & office coffee"
+            : `Restaurant & coffee shop (${randomItem(coffee)})`
     );
 };
 
-document.getElementById("generate-coffee").onclick = () => {
-    const makeOwn = Math.floor(Math.random() * 7) !== 0;
-
-    showResult(
-        makeOwn ? "Make My Own ☕" : randomItem(coffee),
-        "☕"
-    );
-};
 document.getElementById("pant-button").onclick = () => {
     const pant = getPantToday();
 
     showResult(
         pant ?? "It's the weekend!",
-        "👖"
     );
 };
 document.getElementById("generate-sweets").onclick = () => {
     const haveSweets = Math.floor(Math.random() * 7) === 0;
 
     showResult(
-        haveSweets ? "Yes!" : "No",
-        haveSweets ? "🍰" : "🚫"
+        haveSweets ? "Yes!" : "No"
     );
 };
 document.getElementById("generate-favorite").onclick = () => {
-    showResult(randomItem(favorites), "⭐");
+    showResult(randomItem(favorites));
 };
 
 function updateDate() {
