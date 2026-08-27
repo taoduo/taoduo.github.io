@@ -1,380 +1,415 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>Weight Tracking</title>
-
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-
-<style>
-body {
-    margin: 0;
-    background: #F7F1E8;
-    font-family: "STKaiti", "Songti SC", serif;
-}
-#plot {
-    width: 100vw;
-    height: 100vh;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>Weight Tracking</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #F7F1E8;
+      font-family: "STKaiti", "Songti SC", serif;
+    }
+    #plot {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
 </head>
-
 <body>
 
 <div id="plot"></div>
 
 <script>
+// ==========================================
+// CONFIGURATION & GLOBAL STATE
+// ==========================================
+const API_URL = "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217";
+const MASTER_KEY = "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW";
+const START_DATE_STR = "2025-12-16";
+const Y_MIN = 70;
 
-// ---- Data ----
+let yData = [];
 
-const startDate = "2025-12-16";
-const yMin = 70;
+// ==========================================
+// DSP & SIGNAL PROCESSING (DFT & SMOOTHING)
+// ==========================================
 
-let req = new XMLHttpRequest();
+function interpolateNulls(signal) {
+  const result = [...signal];
+  for (let i = 0; i < result.length; i++) {
+    if (result[i] === null) {
+      let prev = i - 1;
+      while (prev >= 0 && result[prev] === null) prev--;
+      
+      let next = i + 1;
+      while (next < result.length && result[next] === null) next++;
 
-req.onreadystatechange = () => {
-  if (req.readyState == XMLHttpRequest.DONE) {
-    const data = JSON.parse(req.responseText);
-    y = data.record;
-    y = y.reverse()
-    function generateDates(startDateStr, n) {
-    const [year, month, day] = startDateStr.split("-").map(Number);
-
-    return Array.from({ length: n }, (_, i) => {
-        const d = new Date(Date.UTC(year, month - 1, day + i));
-
-        return [
-            d.getUTCFullYear(),
-            String(d.getUTCMonth() + 1).padStart(2, "0"),
-            String(d.getUTCDate()).padStart(2, "0")
-        ].join("-");
-    });
+      if (prev >= 0 && next < result.length) {
+        const factor = (i - prev) / (next - prev);
+        result[i] = result[prev] + factor * (result[next] - result[prev]);
+      } else if (prev >= 0) {
+        result[i] = result[prev];
+      } else if (next < result.length) {
+        result[i] = result[next];
+      } else {
+        result[i] = 0;
+      }
+    }
+  }
+  return result;
 }
 
-const dates = generateDates("2025-12-16", y.length);
+function mirrorExtend(signal) {
+  const N = signal.length;
+  const extended = new Array(2 * N);
+  for (let i = 0; i < N; i++) {
+    extended[i] = signal[i];
+    extended[2 * N - 1 - i] = signal[i];
+  }
+  return extended;
+}
 
-// ---- Milestones ----
+function dft(signal) {
+  const N = signal.length;
+  const frequencies = [];
+  for (let k = 0; k < N; k++) {
+    let real = 0;
+    let imag = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      real += signal[n] * Math.cos(angle);
+      imag -= signal[n] * Math.sin(angle);
+    }
+    frequencies.push({ real, imag });
+  }
+  return frequencies;
+}
+
+function idft(frequencies) {
+  const N = frequencies.length;
+  const reconstructed = [];
+  for (let n = 0; n < N; n++) {
+    let sumReal = 0;
+    for (let k = 0; k < N; k++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      sumReal += frequencies[k].real * Math.cos(angle) - frequencies[k].imag * Math.sin(angle);
+    }
+    reconstructed.push(sumReal / N);
+  }
+  return reconstructed;
+}
+
+function getAmplitudes(spectrum) {
+  const N2 = spectrum.length;
+  const numUniqueBins = Math.floor(N2 / 2) + 1;
+  const amplitudes = [];
+
+  for (let k = 0; k < numUniqueBins; k++) {
+    const magnitude = Math.sqrt(spectrum[k].real ** 2 + spectrum[k].imag ** 2);
+    const factor = (k === 0 || k === N2 / 2) ? N2 : (N2 / 2);
+    amplitudes.push(Number((magnitude / factor).toFixed(4)));
+  }
+  return amplitudes;
+}
+
+function findCutoff(amplitudes) {
+  const total = amplitudes.reduce((sum, val) => sum + val, 0);
+  let partial = 0;
+  let cutoff = 0;
+
+  for (let i = 0; i < amplitudes.length; i++) {
+    if (amplitudes[i] < (total - partial) / (amplitudes.length - i)) {
+      cutoff = i;
+      break;
+    }
+    partial += amplitudes[i];
+  }
+  return cutoff;
+}
+
+function filterHighFrequencies(dftOutput, cutoffBins) {
+  const N = dftOutput.length;
+  return dftOutput.map((bin, k) => {
+    if (k <= cutoffBins || k >= N - cutoffBins) {
+      return bin;
+    }
+    return { real: 0, imag: 0 };
+  });
+}
+
+function reconstructMirroredTimeSeries(signal) {
+  const N = signal.length;
+  const cleaned = interpolateNulls(signal);
+  const mirroredSignal = mirrorExtend(cleaned);
+
+  const spectrum = dft(mirroredSignal);
+  const amplitudes = getAmplitudes(spectrum);
+  const cutoffBins = findCutoff(amplitudes);
+
+  const filteredSpectrum = filterHighFrequencies(spectrum, cutoffBins);
+  const reconstructed2N = idft(filteredSpectrum);
+  const reconstructed = reconstructed2N.slice(0, N);
+
+  const currentMin = Math.min(...reconstructed);
+  const currentMax = Math.max(...reconstructed);
+  const currentRange = currentMax - currentMin;
+  const targetRange = Math.max(...cleaned) - Math.min(...cleaned);
+
+  if (currentRange > 0) {
+    const scale = targetRange / currentRange;
+    const mid = (currentMax + currentMin) / 2;
+    return reconstructed.map(val => (val - mid) * scale + mid);
+  }
+
+  return reconstructed;
+}
+
+// ==========================================
+// HELPERS & RENDERING
+// ==========================================
+
+function generateDates(startDateStr, n) {
+  const [year, month, day] = startDateStr.split("-").map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(year, month - 1, day + i));
+    return [
+      d.getUTCFullYear(),
+      String(d.getUTCMonth() + 1).padStart(2, "0"),
+      String(d.getUTCDate()).padStart(2, "0")
+    ].join("-");
+  });
+}
 
 function getMilestones(dates, y) {
-    let prevFloor = Math.floor(y.find(v => v !== null));
+  let prevFloor = Math.floor(y.find(v => v !== null));
+  const mx = [], my = [], labels = [];
 
-    const mx = [];
-    const my = [];
-    const labels = [];
-
-    for (let i = 0; i < y.length; i++) {
-        const val = y[i];
-
-        if (val !== null) {
-            const currFloor = Math.floor(val);
-
-            if (currFloor < prevFloor) {
-                mx.push(dates[i]);
-                my.push(val);
-                labels.push(String(currFloor));
-                prevFloor = currFloor;
-            }
-        }
+  for (let i = 0; i < y.length; i++) {
+    const val = y[i];
+    if (val !== null) {
+      const currFloor = Math.floor(val);
+      if (currFloor < prevFloor) {
+        mx.push(dates[i]);
+        my.push(val);
+        labels.push(String(currFloor));
+        prevFloor = currFloor;
+      }
     }
-
-    return { mx, my, labels };
+  }
+  return { mx, my, labels };
 }
 
-const { mx, my, labels } = getMilestones(dates, y);
+function formatCN(dateStr) {
+  const [y, m, d] = dateStr.split("-");
+  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+}
 
-// ---- Colors ----
+function renderPlot(y) {
+  const dates = generateDates(START_DATE_STR, y.length);
+  const smoothedSignal = reconstructMirroredTimeSeries(y);
+  const { mx, my, labels } = getMilestones(dates, y);
 
-const LINE_COLOR = "#C96A2B";
-const BG_COLOR = "#F7F1E8";
-const FRAME_COLOR = "#3B2F2F";
-const TICK_COLOR = "#A89F94";
+  const LINE_COLOR = "#C96A2B";
+  const BG_COLOR = "#F7F1E8";
+  const FRAME_COLOR = "#3B2F2F";
+  const TICK_COLOR = "#A89F94";
 
-// ---- Traces ----
-const hovertexts = dates.map((d, i) => `${d}<br>${y[i]}`);
-const weightTrace = {
-    x: dates,
-    y: y,
+  const hovertexts = dates.map((d, i) => `${d}<br>${y[i]}`);
+
+  const weightTrace = {
+    x: dates, y: y,
     mode: "lines",
     connectgaps: true,
-
-    line: {
-        width: 2,
-        color: LINE_COLOR
-    },
+    line: { width: 2, color: LINE_COLOR },
     hoverinfo: "text",
     text: hovertexts,
     name: "体重"
-    
-};
+  };
 
-const milestoneTrace = {
-    x: mx,
-    y: my,
+  const smoothTrace = {
+    x: dates,
+    y: smoothedSignal.map(v => Number(v.toFixed(2))),
+    mode: "lines",
+    connectgaps: true,
+    line: { width: 2, color: "#FFD700" },
+    hoverinfo: "text",
+    text: hovertexts,
+    name: "平滑"
+  };
 
+  const milestoneTrace = {
+    x: mx, y: my,
     mode: "markers+text",
-
     text: labels,
     textposition: "bottom center",
-
-    marker: {
-        size: 6,
-        color: "white",
-        line: {
-            width: 2,
-            color: LINE_COLOR
-        }
-    },
-
-    textfont: {
-        size: 16,
-        color: "darkgoldenrod"
-    },
-
+    marker: { size: 6, color: "white", line: { width: 2, color: LINE_COLOR } },
+    textfont: { size: 16, color: "darkgoldenrod" },
     hoverinfo: "skip",
-
     name: "里程碑"
-};
+  };
 
-// ---- Axis range ----
+  const yMax = Math.max(...y.filter(v => v !== null)) + 1;
+  const rangeSpan = yMax - Y_MIN;
+  const dtick = Math.max(1, Math.round(rangeSpan / 8));
 
-const yMax = Math.max(...y.filter(v => v !== null)) + 1;
+  const startStr = dates[0];
+  const endStr = dates[dates.length - 1];
+  const title = `总减重: ${(y[0] - y[y.length - 1]).toFixed(2)} kg (${formatCN(startStr)} - ${formatCN(endStr)})`;
 
-const rangeSpan = yMax - yMin;
-const dtick = Math.max(
-    1,
-    Math.round(rangeSpan / 8)
-);
-
-// ---- Layout ----
-const startStr = dates[0];
-const endStr = dates[dates.length - 1];
-
-function formatCN(dateStr) {
-    const [y, m, d] = dateStr.split("-");
-    return `${y}年${parseInt(m)}月${parseInt(d)}日`;
-}
-
-const title =
-    `总减重: ${(y[0] - y[y.length - 1]).toFixed(2)} kg (` +
-    `${formatCN(startStr)} - ${formatCN(endStr)})`;
-
-const layout = {
-
+  const layout = {
     title: title,
     paper_bgcolor: BG_COLOR,
     plot_bgcolor: BG_COLOR,
     showlegend: false,
     hovermode: "closest",
     spikedistance: -1,
-    margin: {
-        l: 60,
-        r: 60,
-        t: 60,
-        b: 60
-    },
-
-    font: {
-        family:
-            "STKaiti, Songti SC, serif",
-        size: 14,
-        color: FRAME_COLOR
-    },
-
+    margin: { l: 60, r: 60, t: 60, b: 60 },
+    font: { family: "STKaiti, Songti SC, serif", size: 14, color: FRAME_COLOR },
     xaxis: {
-        type: "date",
-        range: [
-            new Date(new Date(dates[0]).getTime() - 3 * 86400000),
-            new Date(new Date(dates[dates.length - 1]).getTime() + 3 * 86400000)
-        ],
-        tickvals: mx,
-        ticktext: mx.map(d => {
-            const [y, m, day] = d.split("-");
-            return `${parseInt(m)}月${parseInt(day)}日`;
-        }),
-        tickangle: -45,
-        showline: true,
-        linecolor: FRAME_COLOR,
-        mirror: true,
-        gridcolor: "rgba(0,0,0,0.05)",
-        tickfont: { color: TICK_COLOR },
-        showspikes: false
+      type: "date",
+      range: [
+        new Date(new Date(dates[0]).getTime() - 3 * 86400000),
+        new Date(new Date(dates[dates.length - 1]).getTime() + 3 * 86400000)
+      ],
+      tickvals: mx,
+      ticktext: mx.map(d => {
+        const [, m, day] = d.split("-");
+        return `${parseInt(m)}月${parseInt(day)}日`;
+      }),
+      tickangle: -45,
+      showline: true,
+      linecolor: FRAME_COLOR,
+      mirror: true,
+      gridcolor: "rgba(0,0,0,0.05)",
+      tickfont: { color: TICK_COLOR },
+      showspikes: false
     },
-
     yaxis: {
-        showspikes: false,
-        range: [yMin - 1, yMax],
-
-        tick0: yMin,
-        dtick: dtick,
-
-        showline: true,
-        linecolor: FRAME_COLOR,
-
-        mirror: true,
-
-        gridcolor:
-            "rgba(0,0,0,0.05)",
-
-        tickfont: {
-            color: TICK_COLOR
-        }
+      showspikes: false,
+      range: [Y_MIN - 1, yMax],
+      tick0: Y_MIN,
+      dtick: dtick,
+      showline: true,
+      linecolor: FRAME_COLOR,
+      mirror: true,
+      gridcolor: "rgba(0,0,0,0.05)",
+      tickfont: { color: TICK_COLOR }
     }
-};
+  };
 
-// ---- Render ----
+  Plotly.newPlot("plot", [weightTrace, smoothTrace, milestoneTrace], layout, { responsive: true });
+}
 
-Plotly.newPlot(
-    "plot",
-    [weightTrace, milestoneTrace],
-    layout,
-    {
-        responsive: true
-    }
-);
+// ==========================================
+// API & NETWORK CALLS
+// ==========================================
+
+async function fetchWeightData() {
+  try {
+    const res = await fetch(API_URL, {
+      headers: { "X-Master-Key": MASTER_KEY }
+    });
+    const data = await res.json();
+    yData = data.record.reverse();
+    renderPlot(yData);
+  } catch (err) {
+    console.error("Error loading weight data:", err);
   }
-};
+}
 
-req.open("GET", "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217/", true);
-req.setRequestHeader("X-Master-Key", "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW");
-req.send();
-// y = [75.32, 75.69, 75.36, 74.87, 75.08, 74.55, 74.56, 74.29,74.34,75.09,75.21,75.99,74.99,75.34,75.36,74.97,75.53,75.17,75.71,75.87,75.52,null,75.47,75.88,75.77,75.79,75.91,76.03,76.41,76.19,76.27,76.17,76.05,76.27,75.99,76.0,76.47,75.62,75.74,76.11,76.25,76.85,76.63,null,null,75.95,75.95,75.9,76.65,77.16,76.1,75.7,76.04,76.26,76.54,77.12,76.8,76.72,null,76.49,76.87,76.48,76.57,76.36,76.55,76.47,76.27,76.16,76.69,null,null,null,null,76.38,76.43,76.79,76.87,76.95,77.05,76.64,76.59,76.72,76.91,77.38,77.99,77.89,77.59,77.53,77.8,77.99,78.04,78.62,79.94,79.84,79.32,78.97,79.34,79.33,79.06,79.13,79.43,79.03,78.96,78.97,79.17,78.91,79.15,79.04,79.25,79.21,78.71,79.33,79.27,79.81,79.98,80.56,80.15,80.22,80.16,null,80.18,80.07,80.19,80.1,80.56,80.66,80.61,80.64,81.17,81.34,82.48,null,null,81.12,81.34,81.09,81.24,81.66,80.95,82.22,81.86,82.07,82.84,82.8,83.19,83.41,83.9,83.75,83.53,83.76,84.14,84.26,84.14,84.26,84.15,84.11,84.34,84.51,84.29,84.67,85.05,85.33,85.15,85.25,85.52,85.64,86.08,85.76,85.66,85.81,85.7,86.38,86.63,86.69,87.06,87.18,87.09,86.91,87.22,87.5,87.77,87.81,88.42];
-// y = y.reverse()
+async function updateWeightData(newDataArray) {
+  try {
+    const payload = JSON.stringify([...newDataArray].reverse());
+    await fetch(API_URL, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": MASTER_KEY
+      },
+      body: payload
+    });
+    location.reload();
+  } catch (err) {
+    console.error("Error updating weight data:", err);
+  }
+}
 
-
-</script>
-<script>
-// --- your function that uses the number ---
 function handleNumber(n) {
-    y.push(n);
-
-    // Create a reversed copy for uploading
-    const json = JSON.stringify([...y].reverse());
-
-    let req = new XMLHttpRequest();
-    req.onreadystatechange = () => {
-        if (req.readyState == XMLHttpRequest.DONE) {
-            console.log(req.responseText);
-
-            // refresh page so chart reloads new data
-            location.reload();
-        }
-    };
-
-    req.open("PUT", "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217", true);
-    req.setRequestHeader("Content-Type", "application/json");
-    req.setRequestHeader("X-Master-Key", "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW");
-    req.send(json);
+  yData.push(n);
+  updateWeightData(yData);
 }
 
 function deleteLatest() {
-    if (!y || y.length === 0) {
-        alert("没有数据可删除。");
-        return;
-    }
-
-    if (!confirm(`确定删除最新记录（${y[y.length - 1]} kg）吗？`)) {
-        return;
-    }
-
-    // Remove newest measurement
-    y.pop();
-
-    // Upload in the original order expected by your JSON bin
-    const json = JSON.stringify([...y].reverse());
-
-    let req = new XMLHttpRequest();
-    req.onreadystatechange = () => {
-        if (req.readyState == XMLHttpRequest.DONE) {
-            console.log(req.responseText);
-
-            // Optional: refresh the page so the graph updates
-            location.reload();
-        }
-    };
-
-    req.open("PUT", "https://api.jsonbin.io/v3/b/6a31a1b9da38895dfecbc217", true);
-    req.setRequestHeader("Content-Type", "application/json");
-    req.setRequestHeader(
-        "X-Master-Key",
-        "$2a$10$OBxmU7a6eu38e/WyoVdhRerNucod.s2WtPl2QPG3J2g5Hca4UZLtW"
-    );
-    req.send(json);
+  if (!yData || yData.length === 0) {
+    alert("没有数据可删除。");
+    return;
+  }
+  if (!confirm(`确定删除最新记录（${yData[yData.length - 1]} kg）吗？`)) {
+    return;
+  }
+  yData.pop();
+  updateWeightData(yData);
 }
 
-// --- create popup UI once ---
+// ==========================================
+// UI & KEYBOARD CONTROLS
+// ==========================================
+
 const popup = document.createElement("div");
-popup.style.position = "fixed";
-popup.style.top = "0";
-popup.style.left = "0";
-popup.style.width = "100vw";
-popup.style.height = "100vh";
-popup.style.background = "rgba(0,0,0,0.5)";
-popup.style.display = "none";
-popup.style.alignItems = "center";
-popup.style.justifyContent = "center";
+Object.assign(popup.style, {
+  position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh",
+  background: "rgba(0,0,0,0.5)", display: "none", alignItems: "center", justifyContent: "center"
+});
 
 popup.innerHTML = `
-    <div style="background:white;padding:20px;border-radius:10px;">
-        <input id="numInput" type="number" placeholder="Enter number" />
-        <button id="submitBtn">Submit</button>
-    </div>
+  <div style="background:white;padding:20px;border-radius:10px;">
+    <input id="numInput" type="number" step="any" placeholder="Enter number" />
+    <button id="submitBtn">Submit</button>
+  </div>
 `;
-
 document.body.appendChild(popup);
 
-const input = popup.querySelector("#numInput");
-const btn = popup.querySelector("#submitBtn");
+const numInput = popup.querySelector("#numInput");
+const submitBtn = popup.querySelector("#submitBtn");
 
-// --- show / hide helpers ---
 function showPopup() {
-    popup.style.display = "flex";
-    input.value = "";
-    input.focus();
+  popup.style.display = "flex";
+  numInput.value = "";
+  numInput.focus();
 }
 
 function hidePopup() {
-    popup.style.display = "none";
+  popup.style.display = "none";
 }
 
-// --- submit logic ---
 function submit() {
-    const val = parseFloat(input.value);
-
-    if (isNaN(val)) return;
-
-    hidePopup();
-
-    // special rule: 0 → null
-    if (val === 0) {
-        handleNumber(null);
-    } else {
-        handleNumber(val);
-    }
+  const val = parseFloat(numInput.value);
+  if (isNaN(val)) return;
+  hidePopup();
+  handleNumber(val === 0 ? null : val);
 }
 
-// --- event wiring ---
-btn.onclick = submit;
-
-input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") submit();
+submitBtn.onclick = submit;
+numInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submit();
 });
 
-// --- key listener for "q" ---
 document.addEventListener("keydown", (e) => {
-    // ignore if user is already typing in input
-    if (document.activeElement === input) return;
+  if (document.activeElement === numInput) return;
 
-    if (e.key === "q") {
-        showPopup();
-    } else if (e.key === "p") {
-        deleteLatest();
-    }
+  const key = e.key.toLowerCase();
+  if (key === "q") {
+    showPopup();
+  } else if (key === "p") {
+    deleteLatest();
+  } else if (key === "g") {
+    window.location.href = "gen.html";
+  }
 });
-document.addEventListener("keydown", function(event) {
-    if (event.key.toLowerCase() === "g") {
-        window.location.href = "gen.html";
-    }
-});
+
+// Initial load
+fetchWeightData();
 </script>
 </body>
 </html>
