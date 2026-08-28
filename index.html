@@ -148,8 +148,8 @@ function reconstructMirroredTimeSeries(signal) {
   const spectrum = dft(mirroredSignal);
   const amplitudes = getAmplitudes(spectrum);
 
-  // Filter out everything under 0.1
-  const filteredSpectrum = filterUnderThreshold(spectrum, amplitudes, 0.1);
+  // Filter out everything under 0.11
+  const filteredSpectrum = filterUnderThreshold(spectrum, amplitudes, 0.12);
 
   const reconstructed2N = idft(filteredSpectrum);
   const reconstructed = reconstructed2N.slice(0, N);
