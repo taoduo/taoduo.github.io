@@ -32,7 +32,7 @@ const Y_MIN = 70;
 let yData = [];
 
 // ==========================================
-// DSP & SIGNAL PROCESSING (DFT & SMOOTHING)
+// DSP & SIGNAL PROCESSING
 // ==========================================
 
 function interpolateNulls(signal) {
@@ -100,35 +100,17 @@ function idft(frequencies) {
   return reconstructed;
 }
 
-function getAmplitudes(spectrum) {
-  const N2 = spectrum.length;
-  const numUniqueBins = Math.floor(N2 / 2) + 1;
-  const amplitudes = [];
-
-  for (let k = 0; k < numUniqueBins; k++) {
-    const magnitude = Math.sqrt(spectrum[k].real ** 2 + spectrum[k].imag ** 2);
-    const factor = (k === 0 || k === N2 / 2) ? N2 : (N2 / 2);
-    amplitudes.push(Number((magnitude / factor).toFixed(4)));
-  }
-  return amplitudes;
-}
-
 /**
- * Low-Pass Cutoff Filter based on Total Length
- * Keeps only frequency bins where k <= floor(totalLength / 7)
- * 
- * @param {Array<{real: number, imag: number}>} spectrum - The 2N DFT spectrum
+ * Filter: zero out bins where k > totalLength / 7
  */
 function filterCutoffLengthBySeven(spectrum) {
-  const N2 = spectrum.length; // Total length (2N)
+  const N2 = spectrum.length;
   const cutoffBins = Math.floor(N2 / 30);
 
   return spectrum.map((bin, k) => {
-    // Retain DC component and low frequencies at both ends of the spectrum (positive & negative)
     if (k <= cutoffBins || k >= N2 - cutoffBins) {
       return bin;
     }
-    // Zero out everything where k > totalLength / 7
     return { real: 0, imag: 0 };
   });
 }
@@ -139,14 +121,11 @@ function reconstructMirroredTimeSeries(signal) {
   const mirroredSignal = mirrorExtend(cleaned);
 
   const spectrum = dft(mirroredSignal);
-
-  // Filter out everything where k > totalLength / 7
   const filteredSpectrum = filterCutoffLengthBySeven(spectrum);
-
+  
   const reconstructed2N = idft(filteredSpectrum);
   const reconstructed = reconstructed2N.slice(0, N);
 
-  // Peak-to-Peak Amplitude Scaling
   const currentMin = Math.min(...reconstructed);
   const currentMax = Math.max(...reconstructed);
   const currentRange = currentMax - currentMin;
@@ -162,7 +141,7 @@ function reconstructMirroredTimeSeries(signal) {
 }
 
 // ==========================================
-// HELPERS & RENDERING
+// RENDERING & HELPERS
 // ==========================================
 
 function generateDates(startDateStr, n) {
@@ -203,7 +182,7 @@ function formatCN(dateStr) {
 
 function renderPlot(y) {
   const dates = generateDates(START_DATE_STR, y.length);
-  const smoothedSignal = reconstructMirroredTimeSeries(y);
+  const smoothedSignal = reconstructMirroredTimeSeries(y).map(v => Number(v.toFixed(2)));
   const { mx, my, labels } = getMilestones(dates, y);
 
   const LINE_COLOR = "#C96A2B";
@@ -211,31 +190,37 @@ function renderPlot(y) {
   const FRAME_COLOR = "#3B2F2F";
   const TICK_COLOR = "#A89F94";
 
-  const hovertexts = dates.map((d, i) => `${d}<br>${y[i]}`);
+  // Individual hover text for each trace
+  const rawHoverTexts = dates.map((d, i) => 
+    y[i] !== null ? `${y[i]} kg` : "无数据"
+  );
+  const smoothHoverTexts = smoothedSignal.map(v => `${v} kg`);
 
   const weightTrace = {
-    x: dates, y: y,
+    x: dates, 
+    y: y,
     mode: "lines",
     connectgaps: true,
     line: { width: 2, color: LINE_COLOR },
-    hoverinfo: "text",
-    text: hovertexts,
-    name: "体重"
+    hoverinfo: "text+name",
+    text: rawHoverTexts,
+    name: "实际体重"
   };
 
   const smoothTrace = {
     x: dates,
-    y: smoothedSignal.map(v => Number(v.toFixed(2))),
+    y: smoothedSignal,
     mode: "lines",
     connectgaps: true,
     line: { width: 2, color: "#FFD700" },
-    hoverinfo: "text",
-    text: hovertexts,
-    name: "平滑"
+    hoverinfo: "text+name",
+    text: smoothHoverTexts,
+    name: "平滑趋势"
   };
 
   const milestoneTrace = {
-    x: mx, y: my,
+    x: mx, 
+    y: my,
     mode: "markers+text",
     text: labels,
     textposition: "bottom center",
@@ -258,8 +243,7 @@ function renderPlot(y) {
     paper_bgcolor: BG_COLOR,
     plot_bgcolor: BG_COLOR,
     showlegend: false,
-    hovermode: "closest",
-    spikedistance: -1,
+    hovermode: "x", // Keeps hover synchronized on the x-axis without duplicating labels
     margin: { l: 60, r: 60, t: 60, b: 60 },
     font: { family: "STKaiti, Songti SC, serif", size: 14, color: FRAME_COLOR },
     xaxis: {
@@ -277,12 +261,13 @@ function renderPlot(y) {
       showline: true,
       linecolor: FRAME_COLOR,
       mirror: true,
+      showspikes: true,
+      spikemode: "across",
+      spikesnap: "cursor",
       gridcolor: "rgba(0,0,0,0.05)",
-      tickfont: { color: TICK_COLOR },
-      showspikes: false
+      tickfont: { color: TICK_COLOR }
     },
     yaxis: {
-      showspikes: false,
       range: [Y_MIN - 1, yMax],
       tick0: Y_MIN,
       dtick: dtick,
