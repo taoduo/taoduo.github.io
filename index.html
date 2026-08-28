@@ -113,28 +113,30 @@ function getAmplitudes(spectrum) {
   return amplitudes;
 }
 
-function findCutoff(amplitudes) {
-  const total = amplitudes.reduce((sum, val) => sum + val, 0);
-  let partial = 0;
-  let cutoff = 0;
+/**
+ * Simple Threshold Filter: Zeroes out any frequency component under 0.1 amplitude.
+ * 
+ * @param {Array<{real: number, imag: number}>} spectrum - Original 2N DFT spectrum
+ * @param {Array<number>} amplitudes - Normalized positive frequency amplitudes
+ * @param {number} threshold - Minimum amplitude required to keep component (default 0.1)
+ */
+function filterUnderThreshold(spectrum, amplitudes, threshold = 0.1) {
+  const N2 = spectrum.length;
+  const numUniqueBins = Math.floor(N2 / 2) + 1;
 
-  for (let i = 0; i < amplitudes.length; i++) {
-    if (amplitudes[i] < (total - partial) / (amplitudes.length - i)) {
-      cutoff = i;
-      break;
-    }
-    partial += amplitudes[i];
-  }
-  return cutoff;
-}
+  return spectrum.map((bin, k) => {
+    // Map negative frequency indices back to their positive equivalent
+    const uniqueIndex = k < numUniqueBins ? k : N2 - k;
 
-function filterHighFrequencies(dftOutput, cutoffBins) {
-  const N = dftOutput.length;
-  return dftOutput.map((bin, k) => {
-    if (k <= cutoffBins || k >= N - cutoffBins) {
-      return bin;
+    // Always keep DC baseline (k = 0)
+    if (uniqueIndex === 0) return bin;
+
+    // Zero out components under 0.1
+    if (amplitudes[uniqueIndex] < threshold) {
+      return { real: 0, imag: 0 };
     }
-    return { real: 0, imag: 0 };
+
+    return bin;
   });
 }
 
@@ -145,12 +147,14 @@ function reconstructMirroredTimeSeries(signal) {
 
   const spectrum = dft(mirroredSignal);
   const amplitudes = getAmplitudes(spectrum);
-  const cutoffBins = findCutoff(amplitudes);
 
-  const filteredSpectrum = filterHighFrequencies(spectrum, cutoffBins);
+  // Filter out everything under 0.1
+  const filteredSpectrum = filterUnderThreshold(spectrum, amplitudes, 0.1);
+
   const reconstructed2N = idft(filteredSpectrum);
   const reconstructed = reconstructed2N.slice(0, N);
 
+  // Peak-to-Peak Amplitude Scaling
   const currentMin = Math.min(...reconstructed);
   const currentMax = Math.max(...reconstructed);
   const currentRange = currentMax - currentMin;
