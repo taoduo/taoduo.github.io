@@ -190,21 +190,15 @@ function renderPlot(y) {
   const FRAME_COLOR = "#3B2F2F";
   const TICK_COLOR = "#A89F94";
 
-  // Individual hover text for each trace
-  const rawHoverTexts = dates.map((d, i) => 
-    y[i] !== null ? `${y[i]} kg` : "无数据"
-  );
-  const smoothHoverTexts = smoothedSignal.map(v => `${v} kg`);
-
   const weightTrace = {
     x: dates, 
     y: y,
     mode: "lines",
     connectgaps: true,
     line: { width: 2, color: LINE_COLOR },
-    hoverinfo: "text+name",
-    text: rawHoverTexts,
-    name: "实际体重"
+    name: "实际",
+    // Single-line formatting inside the unified hover card
+    hovertemplate: "%{y:.2f} kg<extra>实际</extra>"
   };
 
   const smoothTrace = {
@@ -213,9 +207,8 @@ function renderPlot(y) {
     mode: "lines",
     connectgaps: true,
     line: { width: 2, color: "#FFD700" },
-    hoverinfo: "text+name",
-    text: smoothHoverTexts,
-    name: "平滑趋势"
+    name: "平滑",
+    hovertemplate: "%{y:.2f} kg<extra>平滑</extra>"
   };
 
   const milestoneTrace = {
@@ -243,7 +236,10 @@ function renderPlot(y) {
     paper_bgcolor: BG_COLOR,
     plot_bgcolor: BG_COLOR,
     showlegend: false,
-    hovermode: "x", // Keeps hover synchronized on the x-axis without duplicating labels
+    
+    // Combines all values into a single tooltip box with a full vertical line
+    hovermode: "x unified",
+
     margin: { l: 60, r: 60, t: 60, b: 60 },
     font: { family: "STKaiti, Songti SC, serif", size: 14, color: FRAME_COLOR },
     xaxis: {
@@ -261,9 +257,6 @@ function renderPlot(y) {
       showline: true,
       linecolor: FRAME_COLOR,
       mirror: true,
-      showspikes: true,
-      spikemode: "across",
-      spikesnap: "cursor",
       gridcolor: "rgba(0,0,0,0.05)",
       tickfont: { color: TICK_COLOR }
     },
