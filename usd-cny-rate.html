@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>USD / CNY Buying Discipline</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        padding: 40px;
+        background: #f7f1e8;
+        color: #29251f;
+        font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: auto;
+    }
+
+    h1 {
+        font-size: 32px;
+        font-weight: normal;
+        margin-bottom: 8px;
+    }
+
+    .subtitle {
+        color: #756e63;
+        margin-bottom: 30px;
+    }
+
+    .card {
+        border: 1px solid #b8afa2;
+        background: #fbf8f2;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .signal {
+        font-size: 52px;
+        letter-spacing: 2px;
+        margin: 5px 0 25px;
+    }
+
+    .buy {
+        color: #356347;
+    }
+
+    .wait {
+        color: #8b3028;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns:
+            repeat(auto-fit, minmax(190px, 1fr));
+        gap: 20px;
+    }
+
+    .stat {
+        border-top: 1px solid #c9c1b5;
+        padding-top: 10px;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #7d756a;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .value {
+        font-size: 22px;
+        margin-top: 5px;
+    }
+
+    .explanation {
+        line-height: 1.65;
+        color: #514b43;
+    }
+
+    .small {
+        font-size: 13px;
+        color: #82796e;
+        line-height: 1.5;
+    }
+
+    canvas {
+        margin-top: 10px;
+    }
+
+    .rule {
+        font-size: 18px;
+        line-height: 1.6;
+        margin-top: 15px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>USD / CNY Buying Discipline</h1>
+
+    <div class="subtitle">
+        Walk-forward optimization of the USD purchase point
+    </div>
+
+
+    <div class="card">
+
+        <div id="signal" class="signal">
+            Loading…
+        </div>
+
+        <div class="stats">
+
+            <div class="stat">
+                <div class="label">Current USD/CNY</div>
+                <div id="rate" class="value">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="label">Trend Timescale</div>
+                <div id="window" class="value">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="label">Trend Z</div>
+                <div id="z" class="value">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="label">Reversal Evidence</div>
+                <div id="evidence" class="value">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="label">Buy Threshold</div>
+                <div id="threshold" class="value">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="label">Historical Trades</div>
+                <div id="trades" class="value">—</div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="rule">
+
+            <strong>The rule</strong>
+
+            <br><br>
+
+            Buy USD when the accumulated evidence that the
+            USD/CNY downtrend has ended becomes stronger than the
+            level that was historically associated with a good
+            purchase point.
+
+            <br><br>
+
+            The algorithm does <strong>not</strong> assume a fixed
+            20-day future, a fixed 20-day trend, or a manually chosen
+            Z-score threshold.
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="explanation">
+
+            <strong>What is optimized?</strong>
+
+            <br><br>
+
+            Every historical date is treated as though it were
+            "today." The algorithm only sees observations preceding
+            that date.
+
+            <br><br>
+
+            A hypothetical USD purchase is then compared with the
+            eventual bottom of that declining episode. Buying before
+            the decline has finished is penalized heavily; waiting
+            until after the bottom is penalized according to how much
+            USD/CNY subsequently recovered.
+
+            <br><br>
+
+            The parameters producing the lowest historical loss are
+            selected and then applied to today's data.
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <canvas id="chart"></canvas>
+
+    </div>
+
+
+    <div class="card small">
+
+        Data source: Frankfurter daily USD/CNY observations,
+        beginning November 3, 2025.
+
+        <br><br>
+
+        This is a statistical timing rule, not a prediction that
+        identifies the exact market bottom. Exchange rates can
+        change regime abruptly.
+
+    </div>
+
+</div>
+
+
+<script>
+
+
+// ============================================================
+// DATA
+// ============================================================
+
+const START_DATE = "2025-11-03";
+
+
+// ============================================================
+// DATE
+// ============================================================
+
+function localDate(date) {
+
+    const y = date.getFullYear();
+
+    const m =
+        String(date.getMonth() + 1)
+            .padStart(2, "0");
+
+    const d =
+        String(date.getDate())
+            .padStart(2, "0");
+
+    return `${y}-${m}-${d}`;
+}
+
+
+// ============================================================
+// FETCH USD/CNY
+// ============================================================
+
+async function fetchRates() {
+
+    const yesterday =
+        new Date(
+            Date.now() -
+            24 * 60 * 60 * 1000
+        );
+
+    const endDate =
+        localDate(yesterday);
+
+    const url =
+        `https://api.frankfurter.dev/v2/rates` +
+        `?base=USD` +
+        `&quotes=CNY` +
+        `&from=${START_DATE}` +
+        `&to=${endDate}`;
+
+    const response =
+        await fetch(url);
+
+    if (!response.ok)
+        throw new Error(
+            `HTTP ${response.status}`
+        );
+
+    const data =
+        await response.json();
+
+    return data
+        .sort(
+            (a, b) =>
+                a.date.localeCompare(b.date)
+        )
+        .map(x => ({
+            date: x.date,
+            rate: x.rate
+        }));
+}
+
+
+// ============================================================
+// BASIC STATISTICS
+// ============================================================
+
+function mean(x) {
+
+    return x.reduce(
+        (a, b) => a + b,
+        0
+    ) / x.length;
+}
+
+
+function median(x) {
+
+    if (!x.length)
+        return NaN;
+
+    const y =
+        [...x].sort(
+            (a, b) => a - b
+        );
+
+    const n = y.length;
+
+    return n % 2
+        ? y[(n - 1) / 2]
+        : (
+            y[n / 2 - 1] +
+            y[n / 2]
+        ) / 2;
+}
+
+
+function percentile(x, p) {
+
+    if (!x.length)
+        return NaN;
+
+    const y =
+        [...x].sort(
+            (a, b) => a - b
+        );
+
+    const pos =
+        (y.length - 1) * p;
+
+    const lo =
+        Math.floor(pos);
+
+    const hi =
+        Math.ceil(pos);
+
+    if (lo === hi)
+        return y[lo];
+
+    return (
+        y[lo] +
+        (y[hi] - y[lo]) *
+        (pos - lo)
+    );
+}
+
+
+// ============================================================
+// LINEAR REGRESSION
+// ============================================================
+
+function regression(y) {
+
+    const n = y.length;
+
+    if (n < 3)
+        return null;
+
+    const xMean =
+        (n - 1) / 2;
+
+    const yMean =
+        mean(y);
+
+    let Sxx = 0;
+    let Sxy = 0;
+
+    for (let i = 0; i < n; i++) {
+
+        const dx =
+            i - xMean;
+
+        const dy =
+            y[i] - yMean;
+
+        Sxx += dx * dx;
+        Sxy += dx * dy;
+    }
+
+    const slope =
+        Sxy / Sxx;
+
+    let SSE = 0;
+
+    for (let i = 0; i < n; i++) {
+
+        const fitted =
+            yMean +
+            slope * (i - xMean);
+
+        SSE +=
+            (y[i] - fitted) ** 2;
+    }
+
+    const slopeSE =
+        Math.sqrt(
+            (SSE / (n - 2)) /
+            Sxx
+        );
+
+    return {
+        slope,
+        slopeSE,
+        z:
+            slope / slopeSE
+    };
+}
+
+
+// ============================================================
+// TREND
+// ============================================================
+
+function trendAt(
+    rates,
+    index,
+    window
+) {
+
+    if (index < window)
+        return null;
+
+    const y =
+        rates
+            .slice(
+                index - window,
+                index
+            )
+            .map(
+                x => Math.log(x.rate)
+            );
+
+    return regression(y);
+}
+
+
+// ============================================================
+// DETERMINE CHARACTERISTIC TIMESCALE
+//
+// We don't choose 20 days.
+//
+// We examine the whole range and find where the trend estimate
+// stops being dominated by day-to-day noise.
+// ============================================================
+
+function determineTimescale(rates) {
+
+    const maxWindow =
+        Math.min(
+            90,
+            Math.floor(
+                rates.length / 3
+            )
+        );
+
+    const candidates = [];
+
+    for (
+        let w = 5;
+        w <= maxWindow;
+        w++
+    ) {
+
+        const changes = [];
+
+        for (
+            let i = w + 1;
+            i < rates.length;
+            i++
+        ) {
+
+            const a =
+                trendAt(
+                    rates,
+                    i - 1,
+                    w
+                );
+
+            const b =
+                trendAt(
+                    rates,
+                    i,
+                    w
+                );
+
+            if (a && b) {
+
+                changes.push(
+                    b.slope -
+                    a.slope
+                );
+            }
+        }
+
+        if (changes.length < 30)
+            continue;
+
+        candidates.push({
+            window: w,
+            noise:
+                median(
+                    changes.map(
+                        Math.abs
+                    )
+                )
+        });
+    }
+
+    if (!candidates.length)
+        return 20;
+
+    const bestNoise =
+        Math.min(
+            ...candidates.map(
+                x => x.noise
+            )
+        );
+
+    /*
+     * Choose the earliest point that is effectively inside the
+     * stable minimum region.
+     */
+    const stable =
+        candidates.find(
+            x =>
+                x.noise <=
+                bestNoise * 1.15
+        );
+
+    return stable
+        ? stable.window
+        : candidates.reduce(
+            (a, b) =>
+                a.noise < b.noise
+                    ? a
+                    : b
+        ).window;
+}
+
+
+// ============================================================
+// BUILD TREND SERIES
+// ============================================================
+
+function buildTrendSeries(
+    rates,
+    window
+) {
+
+    const result = [];
+
+    for (
+        let i = window;
+        i < rates.length;
+        i++
+    ) {
+
+        const t =
+            trendAt(
+                rates,
+                i,
+                window
+            );
+
+        if (t) {
+
+            result.push({
+                index: i,
+                z: t.z,
+                slope: t.slope
+            });
+        }
+    }
+
+    return result;
+}
+
+
+// ============================================================
+// TREND-NOISE SCALE
+// ============================================================
+
+function changeScale(
+    trendSeries,
+    end
+) {
+
+    const data =
+        trendSeries.filter(
+            x => x.index <= end
+        );
+
+    if (data.length < 20)
+        return null;
+
+    const changes = [];
+
+    for (
+        let i = 1;
+        i < data.length;
+        i++
+    ) {
+
+        changes.push(
+            data[i].z -
+            data[i - 1].z
+        );
+    }
+
+    return median(
+        changes.map(
+            Math.abs
+        )
+    );
+}
+
+
+// ============================================================
+// SEQUENTIAL REVERSAL EVIDENCE
+//
+// Positive movement of trend Z accumulates evidence of reversal.
+//
+// Negative movement destroys evidence.
+//
+// A strongly negative trend resets accumulated evidence.
+// ============================================================
+
+function reversalEvidence(
+    trendSeries,
+    position,
+    scale
+) {
+
+    if (
+        !scale ||
+        scale === 0
+    )
+        return 0;
+
+    let evidence = 0;
+
+    /*
+     * Only recent history matters.
+     *
+     * Instead of choosing a fixed number of days, we reset
+     * naturally when a new strong downward regime appears.
+     */
+    for (
+        let i = 1;
+        i <= position;
+        i++
+    ) {
+
+        const previous =
+            trendSeries[i - 1];
+
+        const current =
+            trendSeries[i];
+
+        const delta =
+            current.z -
+            previous.z;
+
+        evidence +=
+            delta / scale;
+
+        evidence =
+            Math.max(
+                0,
+                evidence
+            );
+
+        /*
+         * Strong renewed decline means our previous reversal
+         * evidence is no longer relevant.
+         */
+        if (current.z < -1)
+            evidence = 0;
+    }
+
+    return evidence;
+}
+
+
+// ============================================================
+// FIND EVENTUAL BOTTOM
+//
+// No 20-day horizon.
+//
+// Starting from a candidate purchase date, we continue forward
+// until the downward episode has genuinely ended.
+//
+// The bottom is the minimum rate before the recovery.
+//
+// A recovery is considered established when the rate rises above
+// the level at which the decline began.
+//
+// ============================================================
+
+function findEpisodeBottom(
+    rates,
+    start
+) {
+
+    const startingRate =
+        rates[start].rate;
+
+    let minimumRate =
+        startingRate;
+
+    let minimumIndex =
+        start;
+
+    /*
+     * Search forward until the rate has recovered above the
+     * starting level.
+     */
+    for (
+        let i = start + 1;
+        i < rates.length;
+        i++
+    ) {
+
+        if (
+            rates[i].rate <
+            minimumRate
+        ) {
+
+            minimumRate =
+                rates[i].rate;
+
+            minimumIndex =
+                i;
+        }
+
+        if (
+            i > minimumIndex &&
+            rates[i].rate >=
+            startingRate
+        ) {
+
+            return {
+                bottomIndex:
+                    minimumIndex,
+
+                bottomRate:
+                    minimumRate,
+
+                recovered:
+                    true
+            };
+        }
+    }
+
+    /*
+     * If the episode has not recovered by the end of the data,
+     * the true bottom is unknown.
+     */
+    return {
+        bottomIndex:
+            minimumIndex,
+
+        bottomRate:
+            minimumRate,
+
+        recovered:
+            false
+    };
+}
+
+
+// ============================================================
+// LOSS OF A PURCHASE
+//
+// This is the key objective.
+//
+// If we buy before the bottom:
+//
+//     purchaseRate > bottomRate
+//
+// we pay too much.
+//
+// The loss is therefore:
+//
+//     purchaseRate / bottomRate - 1
+//
+// If the rate subsequently rises before we buy, we also pay a
+// smaller "late purchase" penalty.
+//
+// ============================================================
+
+function purchaseLoss(
+    purchaseRate,
+    bottomRate
+) {
+
+    return (
+        purchaseRate /
+        bottomRate
+    ) - 1;
+}
+
+
+// ============================================================
+// GENERATE CANDIDATE RULES
+//
+// These are not arbitrary final parameters.
+// They are simply possible models which are evaluated against
+// the historical data.
+//
+// The data choose among them.
+// ============================================================
+
+function candidateRules() {
+
+    const windows = [];
+
+    for (
+        let w = 5;
+        w <= 60;
+        w += 2
+    ) {
+        windows.push(w);
+    }
+
+    const thresholds = [];
+
+    /*
+     * Sequential evidence thresholds are expressed in units
+     * of historical trend noise.
+     */
+    for (
+        let x = 1;
+        x <= 8;
+        x += 0.5
+    ) {
+        thresholds.push(x);
+    }
+
+    const rules = [];
+
+    for (const window of windows) {
+
+        for (const threshold of thresholds) {
+
+            rules.push({
+                window,
+                threshold
+            });
+        }
+    }
+
+    return rules;
+}
+
+
+// ============================================================
+// BACKTEST ONE RULE
+//
+// Crucially:
+//
+// At each historical date, the detector knows only the past.
+//
+// No future data is used to generate the signal.
+//
+// Future data is used ONLY to evaluate whether that historical
+// signal was good.
+// ============================================================
+
+function backtestRule(
+    rates,
+    rule
+) {
+
+    const trendSeries =
+        buildTrendSeries(
+            rates,
+            rule.window
+        );
+
+    if (trendSeries.length < 50)
+        return null;
+
+    const trades = [];
+
+    /*
+     * Only consider dates with a clear downward trend.
+     */
+    for (
+        let p = 30;
+        p < trendSeries.length;
+        p++
+    ) {
+
+        const current =
+            trendSeries[p];
+
+        if (current.z >= 0)
+            continue;
+
+        const scale =
+            changeScale(
+                trendSeries,
+                current.index
+            );
+
+        if (!scale)
+            continue;
+
+        const evidence =
+            reversalEvidence(
+                trendSeries,
+                p,
+                scale
+            );
+
+        /*
+         * The hypothetical buy signal.
+         */
+        if (
+            evidence <
+            rule.threshold
+        )
+            continue;
+
+        /*
+         * This is the critical walk-forward constraint:
+         *
+         * We determine the historical signal first.
+         * Only now do we look into the future to score it.
+         */
+        const future =
+            findEpisodeBottom(
+                rates,
+                current.index
+            );
+
+        if (!future.recovered)
+            continue;
+
+        const purchaseRate =
+            rates[
+                current.index
+            ].rate;
+
+        const loss =
+            purchaseLoss(
+                purchaseRate,
+                future.bottomRate
+            );
+
+        const delay =
+            Math.max(
+                0,
+                current.index -
+                future.bottomIndex
+            );
+
+        trades.push({
+            index:
+                current.index,
+
+            loss,
+
+            delay
+        });
+
+        /*
+         * Don't repeatedly count every day after a signal as a
+         * separate trade.
+         *
+         * Jump to the recovery point.
+         */
+        while (
+            p + 1 < trendSeries.length &&
+            trendSeries[p + 1].index <=
+                future.bottomIndex
+        ) {
+
+            p++;
+        }
+    }
+
+    if (trades.length < 3)
+        return null;
+
+    const losses =
+        trades.map(
+            x => x.loss
+        );
+
+    /*
+     * Primary objective:
+     *
+     * median opportunity cost.
+     *
+     * This is robust against one bizarre historical episode.
+     */
+    const medianLoss =
+        median(losses);
+
+    /*
+     * Tail risk:
+     *
+     * We care particularly about occasions where we bought
+     * substantially too early.
+     */
+    const tailLoss =
+        percentile(
+            losses,
+            0.90
+        );
+
+    /*
+     * Penalize rules that almost never produce a signal.
+     */
+    const frequencyPenalty =
+        trades.length < 5
+            ? 0.005
+            : 0;
+
+    /*
+     * Combined objective.
+     *
+     * Median loss is dominant.
+     * Tail loss discourages dangerous early entries.
+     */
+    const score =
+        medianLoss +
+        0.35 * tailLoss +
+        frequencyPenalty;
+
+    return {
+        window:
+            rule.window,
+
+        threshold:
+            rule.threshold,
+
+        trades,
+        medianLoss,
+        tailLoss,
+        score
+    };
+}
+
+
+// ============================================================
+// OPTIMIZE
+// ============================================================
+
+function optimizeRule(rates) {
+
+    const rules =
+        candidateRules();
+
+    const results = [];
+
+    for (const rule of rules) {
+
+        const result =
+            backtestRule(
+                rates,
+                rule
+            );
+
+        if (result)
+            results.push(result);
+    }
+
+    if (!results.length)
+        throw new Error(
+            "Could not find a usable historical rule."
+        );
+
+    results.sort(
+        (a, b) =>
+            a.score -
+            b.score
+    );
+
+    return results[0];
+}
+
+
+// ============================================================
+// CURRENT SIGNAL
+// ============================================================
+
+function currentSignal(
+    rates,
+    rule
+) {
+
+    const trendSeries =
+        buildTrendSeries(
+            rates,
+            rule.window
+        );
+
+    const position =
+        trendSeries.length - 1;
+
+    const current =
+        trendSeries[position];
+
+    const scale =
+        changeScale(
+            trendSeries,
+            current.index
+        );
+
+    const evidence =
+        reversalEvidence(
+            trendSeries,
+            position,
+            scale
+        );
+
+    /*
+     * The optimized historical rule is now frozen.
+     *
+     * No future data is consulted.
+     */
+    const buy =
+        current.z >= 0 &&
+        evidence >= rule.threshold;
+
+    let state;
+
+    if (buy) {
+
+        state = "BUY";
+
+    } else if (
+        current.z >= 0 ||
+        evidence > 0
+    ) {
+
+        state = "BOTTOMING";
+
+    } else {
+
+        state = "WAIT";
+    }
+
+    return {
+        state,
+        z:
+            current.z,
+        evidence,
+        scale
+    };
+}
+
+
+// ============================================================
+// CHART
+// ============================================================
+
+let chart = null;
+
+function drawChart(rates) {
+
+    const ctx =
+        document
+            .getElementById("chart")
+            .getContext("2d");
+
+    if (chart)
+        chart.destroy();
+
+    chart =
+        new Chart(
+            ctx,
+            {
+                type: "line",
+
+                data: {
+
+                    labels:
+                        rates.map(
+                            x => x.date
+                        ),
+
+                    datasets: [
+                        {
+                            label:
+                                "USD/CNY",
+
+                            data:
+                                rates.map(
+                                    x => x.rate
+                                ),
+
+                            borderWidth:
+                                1.5,
+
+                            pointRadius:
+                                0,
+
+                            tension:
+                                0
+                        }
+                    ]
+                },
+
+                options: {
+
+                    responsive:
+                        true,
+
+                    interaction: {
+                        intersect:
+                            false,
+
+                        mode:
+                            "index"
+                    },
+
+                    scales: {
+
+                        x: {
+                            ticks: {
+                                maxTicksLimit:
+                                    12
+                            }
+                        },
+
+                        y: {
+                            title: {
+                                display:
+                                    true,
+
+                                text:
+                                    "CNY per USD"
+                            }
+                        }
+                    }
+                }
+            }
+        );
+}
+
+
+// ============================================================
+// UI
+// ============================================================
+
+function updatePage(
+    rates,
+    optimized,
+    current
+) {
+
+    const signal =
+        document
+            .getElementById("signal");
+
+    signal.textContent =
+        current.state;
+
+    signal.className =
+        "signal " +
+        (
+            current.state === "BUY"
+                ? "buy"
+                : "wait"
+        );
+
+    document
+        .getElementById("rate")
+        .textContent =
+        rates[
+            rates.length - 1
+        ].rate.toFixed(4);
+
+    document
+        .getElementById("window")
+        .textContent =
+        `${optimized.window} trading days`;
+
+    document
+        .getElementById("z")
+        .textContent =
+        current.z.toFixed(2);
+
+    document
+        .getElementById("evidence")
+        .textContent =
+        current.evidence.toFixed(2);
+
+    document
+        .getElementById("threshold")
+        .textContent =
+        optimized.threshold.toFixed(2);
+
+    document
+        .getElementById("trades")
+        .textContent =
+        optimized.trades.length;
+
+    drawChart(rates);
+}
+
+
+// ============================================================
+// RUN
+// ============================================================
+
+(async function () {
+
+    try {
+
+        const rates =
+            await fetchRates();
+
+        if (rates.length < 100) {
+
+            throw new Error(
+                "Not enough historical observations."
+            );
+        }
+
+        /*
+         * First determine the natural timescale.
+         */
+        const naturalWindow =
+            determineTimescale(
+                rates
+            );
+
+        console.log(
+            "Natural trend timescale:",
+            naturalWindow
+        );
+
+        /*
+         * Optimize the complete buying rule.
+         *
+         * We nevertheless allow the backtest to reconsider the
+         * window because the purchase objective can differ from
+         * merely estimating the trend.
+         */
+        const optimized =
+            optimizeRule(
+                rates
+            );
+
+        const current =
+            currentSignal(
+                rates,
+                optimized
+            );
+
+        console.log(
+            "Optimized window:",
+            optimized.window
+        );
+
+        console.log(
+            "Optimized threshold:",
+            optimized.threshold
+        );
+
+        console.log(
+            "Historical trades:",
+            optimized.trades.length
+        );
+
+        console.log(
+            "Median loss:",
+            optimized.medianLoss
+        );
+
+        console.log(
+            "90th percentile loss:",
+            optimized.tailLoss
+        );
+
+        console.log(
+            "Current Z:",
+            current.z
+        );
+
+        console.log(
+            "Current reversal evidence:",
+            current.evidence
+        );
+
+        console.log(
+            "Current signal:",
+            current.state
+        );
+
+        updatePage(
+            rates,
+            optimized,
+            current
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        const signal =
+            document
+                .getElementById("signal");
+
+        signal.textContent =
+            "ERROR";
+
+        signal.className =
+            "signal wait";
+
+        document
+            .getElementById("rate")
+            .textContent =
+            error.message;
+    }
+
+})();
+
+</script>
+
+</body>
+</html>
