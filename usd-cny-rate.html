@@ -1,1393 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>USD/CNY Trend</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USD / CNY</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<style>
-    body {
-        margin: 0;
-        padding: 40px;
-        background: #f7f1e8;
-        color: #222;
-        font-family: Georgia, "Times New Roman", serif;
-    }
+    <style>
+        :root {
+            --bg-color: #f7f1e8;
+            --card-bg: #faf7f1;
+            --text-color: #2f2a24;
+            --muted-text: #756d63;
+            --border-color: #b8afa3;
+            --accent-border: #8c8275;
+            --danger-color: #9b2c2c;
+        }
 
-    .container {
-        max-width: 1050px;
-        margin: auto;
-    }
-
-    h1 {
-        font-weight: normal;
-        border-bottom: 1px solid #555;
-        padding-bottom: 10px;
-        margin-bottom: 30px;
-    }
-
-    h2 {
-        font-weight: normal;
-        margin-top: 35px;
-        border-bottom: 1px solid #aaa;
-        padding-bottom: 5px;
-    }
-
-    .status {
-        border: 1px solid #555;
-        padding: 25px;
-        background: rgba(255,255,255,0.25);
-    }
-
-    .signal {
-        font-size: 42px;
-        letter-spacing: 2px;
-        margin-bottom: 15px;
-        font-weight: bold;
-    }
-
-    .explanation {
-        line-height: 1.6;
-        max-width: 850px;
-    }
-
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 18px;
-        margin-top: 25px;
-    }
-
-    .metric {
-        border-top: 1px solid #888;
-        padding-top: 8px;
-    }
-
-    .label {
-        font-size: 13px;
-        color: #555;
-        margin-bottom: 5px;
-    }
-
-    .value {
-        font-size: 21px;
-    }
-
-    .data-box {
-        border: 1px solid #999;
-        padding: 18px;
-        margin-top: 25px;
-        font-family: Menlo, Monaco, Consolas, monospace;
-        font-size: 13px;
-        line-height: 1.7;
-        overflow-wrap: anywhere;
-        background: rgba(255,255,255,0.2);
-    }
-
-    canvas {
-        margin-top: 20px;
-    }
-
-    .loading {
-        font-style: italic;
-    }
-
-    @media (max-width: 700px) {
         body {
+            margin: 0;
+            padding: 40px 20px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: Georgia, "Times New Roman", serif;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: normal;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--accent-border);
+            padding-bottom: 10px;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .current {
+            font-size: 42px;
+        }
+
+        .current span {
+            font-size: 18px;
+            color: var(--muted-text);
+        }
+
+        /* Trend Status Card */
+        .analysis-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid #36a2eb;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            border-radius: 2px;
+        }
+
+        .analysis-card h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 0 6px 0;
+            color: var(--muted-text);
+        }
+
+        .status-text {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
             padding: 20px;
         }
 
-        .grid {
-            grid-template-columns: 1fr 1fr;
+        .info {
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #625b53;
+            display: flex;
+            justify-content: space-between;
         }
-    }
-</style>
+
+        .error {
+            color: var(--danger-color);
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
-
 <div class="container">
 
-<h1>USD/CNY Trend</h1>
+    <h1>USD / CNY</h1>
 
-<div id="loading" class="loading">
-    Loading historical exchange-rate data…
-</div>
-
-<div id="content" style="display:none;">
-
-    <div class="status">
-
-        <div id="signal" class="signal">WAIT</div>
-
-        <div id="signalExplanation" class="explanation"></div>
-
-        <div class="grid">
-
-            <div class="metric">
-                <div class="label">USD/CNY</div>
-                <div class="value" id="currentRate">—</div>
-            </div>
-
-            <div class="metric">
-                <div class="label">Trend timescale</div>
-                <div class="value" id="timescale">—</div>
-            </div>
-
-            <div class="metric">
-                <div class="label">Trend Z</div>
-                <div class="value" id="trendZ">—</div>
-            </div>
-
-            <div class="metric">
-                <div class="label">Trend slope</div>
-                <div class="value" id="trendSlope">—</div>
-            </div>
-
-            <div class="metric">
-                <div class="label">Reversal evidence</div>
-                <div class="value" id="reversalEvidence">—</div>
-            </div>
-
-            <div class="metric">
-                <div class="label">Historical reversals</div>
-                <div class="value" id="historicalReversals">—</div>
-            </div>
-
+    <div class="header-section">
+        <div class="current">
+            <span>1 USD = </span>
+            <span id="currentRate">Loading...</span>
+            <span> CNY</span>
         </div>
     </div>
 
-
-    <h2>Data version</h2>
-
-    <div class="data-box">
-
-        <div>
-            Global cutoff:
-            <span id="cutoffDate">—</span>
-        </div>
-
-        <div>
-            First observation:
-            <span id="firstDate">—</span>
-        </div>
-
-        <div>
-            Last observation:
-            <span id="lastDate">—</span>
-        </div>
-
-        <div>
-            Observations:
-            <span id="observationCount">—</span>
-        </div>
-
-        <div>
-            Latest rate:
-            <span id="latestRate">—</span>
-        </div>
-
-        <div>
-            Dataset fingerprint:
-            <span id="datasetHash">—</span>
-        </div>
-
+    <!-- Clear Trend Summary -->
+    <div class="analysis-card">
+        <h2>Trend Detection</h2>
+        <div class="status-text" id="trendStatus">Analyzing trend...</div>
     </div>
 
-
-    <h2>USD/CNY</h2>
-
-    <canvas id="chart"></canvas>
-
-
-    <h2>How the signal works</h2>
-
-    <div class="explanation">
-
-        <p>
-            The purpose of this indicator is not to predict the exact
-            bottom. It asks a simpler question:
-            <strong>has the declining USD/CNY trend actually ended?</strong>
-        </p>
-
-        <p>
-            The trend timescale is learned from the historical data.
-            There is no fixed 20-day window.
-        </p>
-
-        <p>
-            <strong>Trend Z</strong> is the estimated trend divided by
-            its statistical uncertainty. A negative value means USD/CNY
-            is falling. A positive value means it is rising.
-        </p>
-
-        <p>
-            <strong>Reversal evidence</strong> measures how strongly the
-            trend has moved away from its previous negative state.
-            It accumulates when the trend improves and disappears when
-            the decline resumes.
-        </p>
-
-        <p>
-            <strong>WAIT</strong> means the decline is still statistically
-            present. <strong>BOTTOMING</strong> means the decline has
-            weakened substantially but has not yet produced a confirmed
-            reversal. <strong>BUY</strong> means the trend has crossed
-            from negative to positive with sufficient historical evidence.
-        </p>
-
-        <p>
-            The same UTC cutoff is used for every visitor. Therefore
-            someone viewing this page in California and someone viewing
-            it in China will receive the same dataset and the same signal.
-        </p>
-
+    <div class="chart-container">
+        <canvas id="rateChart"></canvas>
     </div>
+
+    <div class="info">
+        <div>Data source: Frankfurter API</div>
+        <div id="dateRange"></div>
+        <div id="observationCount"></div>
+    </div>
+
+    <div id="error" class="error"></div>
 
 </div>
-
 
 <script>
-
-/*
- * ============================================================
- * CONFIGURATION
- * ============================================================
- */
+/* ============================================================
+   CONFIG & UTILITIES
+   ============================================================ */
 
 const START_DATE = "2025-11-03";
 
-
-/*
- * ============================================================
- * GLOBAL DATA CUTOFF
- * ============================================================
- *
- * This is deliberately UTC.
- *
- * Nobody's local timezone affects the dataset.
- */
-
-function getGlobalCutoffDate() {
-
+function getPreviousUTCDate() {
     const now = new Date();
-
-    const cutoff = new Date(Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate() - 1
-    ));
-
-    return cutoff.toISOString().slice(0, 10);
-}
-
-
-/*
- * ============================================================
- * FETCH DATA
- * ============================================================
- */
-
-async function fetchRates() {
-
-    const cutoff = getGlobalCutoffDate();
-
-    const url =
-        "https://api.frankfurter.dev/v2/rates" +
-        "?base=USD" +
-        "&quotes=CNY" +
-        "&from=" + START_DATE +
-        "&to=" + cutoff;
-
-    const response = await fetch(url, {
-        cache: "no-store"
-    });
-
-    if (!response.ok) {
-        throw new Error(
-            "Frankfurter API returned HTTP " +
-            response.status
-        );
-    }
-
-    const raw = await response.json();
-
-    raw.sort((a, b) =>
-        a.date.localeCompare(b.date)
+    const yesterday = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)
     );
-
-    const data = raw
-        .map(x => ({
-            date: x.date,
-            rate: Number(x.rate)
-        }))
-        .filter(x =>
-            Number.isFinite(x.rate) &&
-            x.rate > 0
-        );
-
-    if (data.length < 30) {
-        throw new Error(
-            "Not enough historical observations."
-        );
-    }
-
-    return {
-        data,
-        cutoff
-    };
+    return yesterday.toISOString().slice(0, 10);
 }
 
+/* ============================================================
+   STATISTICAL ENGINE: Sequential Mann-Kendall Test
+   ============================================================ */
 
-/*
- * ============================================================
- * BASIC STATISTICS
- * ============================================================
- */
+function sequentialMannKendall(data) {
+    const n = data.length;
+    const u = new Array(n).fill(0);
+    const uPrime = new Array(n).fill(0);
 
-function median(values) {
+    function computeProgressiveU(series) {
+        const len = series.length;
+        const result = new Array(len).fill(0);
+        let t = 0;
+        
+        for (let i = 1; i < len; i++) {
+            let r_i = 0;
+            for (let j = 0; j < i; j++) {
+                if (series[i] > series[j]) r_i++;
+            }
+            t += r_i;
 
-    if (!values.length) {
-        return NaN;
+            const E = (i * (i + 1)) / 4;
+            const Var = (i * (i + 1) * (2 * i + 5)) / 72;
+
+            result[i] = Var > 0 ? (t - E) / Math.sqrt(Var) : 0;
+        }
+        return result;
     }
 
-    const x = [...values].sort(
-        (a, b) => a - b
-    );
-
-    const m = Math.floor(x.length / 2);
-
-    return x.length % 2
-        ? x[m]
-        : (x[m - 1] + x[m]) / 2;
-}
-
-
-function percentile(values, p) {
-
-    if (!values.length) {
-        return NaN;
-    }
-
-    const x = [...values].sort(
-        (a, b) => a - b
-    );
-
-    const index =
-        (x.length - 1) * p;
-
-    const lo = Math.floor(index);
-    const hi = Math.ceil(index);
-
-    if (lo === hi) {
-        return x[lo];
-    }
-
-    return x[lo] +
-        (x[hi] - x[lo]) *
-        (index - lo);
-}
-
-
-/*
- * ============================================================
- * LINEAR REGRESSION
- * ============================================================
- */
-
-function regression(y) {
-
-    const n = y.length;
-
-    let sx = 0;
-    let sy = 0;
-    let sxx = 0;
-    let sxy = 0;
+    const forwardU = computeProgressiveU(data);
+    const backwardU = computeProgressiveU([...data].reverse());
 
     for (let i = 0; i < n; i++) {
-
-        const x = i;
-
-        sx += x;
-        sy += y[i];
-        sxx += x * x;
-        sxy += x * y[i];
+        u[i] = forwardU[i];
+        uPrime[i] = -backwardU[n - 1 - i];
     }
 
-    const denominator =
-        n * sxx - sx * sx;
+    const threshold = 1.96;
+    let changePointIndex = null;
 
-    const slope =
-        (n * sxy - sx * sy) /
-        denominator;
+    for (let i = 1; i < n; i++) {
+        const prevDiff = u[i - 1] - uPrime[i - 1];
+        const currDiff = u[i] - uPrime[i];
 
-    const intercept =
-        (sy - slope * sx) / n;
-
-    let rss = 0;
-
-    for (let i = 0; i < n; i++) {
-
-        const fitted =
-            intercept + slope * i;
-
-        rss +=
-            (y[i] - fitted) ** 2;
-    }
-
-    const variance =
-        rss / Math.max(1, n - 2);
-
-    const slopeSE =
-        Math.sqrt(
-            variance /
-            (sxx - sx * sx / n)
-        );
-
-    return {
-        slope,
-        slopeSE
-    };
-}
-
-
-/*
- * ============================================================
- * TREND ESTIMATE
- * ============================================================
- *
- * Regression is performed on log(USD/CNY).
- *
- * Therefore the slope approximately represents proportional
- * daily movement.
- */
-
-function calculateTrend(data, index, window) {
-
-    if (index + 1 < window) {
-        return null;
-    }
-
-    const start =
-        index - window + 1;
-
-    const y =
-        data
-            .slice(start, index + 1)
-            .map(x => Math.log(x.rate));
-
-    const r =
-        regression(y);
-
-    const z =
-        r.slopeSE > 0
-            ? r.slope / r.slopeSE
-            : 0;
-
-    return {
-        slope: r.slope,
-        slopeSE: r.slopeSE,
-        z
-    };
-}
-
-
-/*
- * ============================================================
- * DETERMINE NATURAL TREND TIMESCALE
- * ============================================================
- *
- * We do NOT assume 20 days.
- *
- * We calculate the trend at many possible windows and ask:
- *
- * "At which scale does the estimated trend become most stable?"
- *
- * Stability is measured by how much the Trend Z jumps from day
- * to day relative to its typical magnitude.
- */
-
-function determineTrendTimescale(data) {
-
-    let bestWindow = 20;
-    let bestScore = Infinity;
-
-    for (let window = 5; window <= 60; window++) {
-
-        const zs = [];
-
-        for (
-            let i = window - 1;
-            i < data.length;
-            i++
-        ) {
-
-            const t =
-                calculateTrend(
-                    data,
-                    i,
-                    window
-                );
-
-            if (t && Number.isFinite(t.z)) {
-                zs.push(t.z);
-            }
-        }
-
-        if (zs.length < 30) {
-            continue;
-        }
-
-        const changes = [];
-
-        for (let i = 1; i < zs.length; i++) {
-
-            changes.push(
-                Math.abs(zs[i] - zs[i - 1])
-            );
-        }
-
-        const typicalChange =
-            median(changes);
-
-        const typicalMagnitude =
-            median(
-                zs.map(z => Math.abs(z))
-            ) + 0.1;
-
-        const score =
-            typicalChange /
-            typicalMagnitude;
-
-        if (score < bestScore) {
-
-            bestScore = score;
-            bestWindow = window;
-        }
-    }
-
-    return bestWindow;
-}
-
-
-/*
- * ============================================================
- * TREND HISTORY
- * ============================================================
- */
-
-function calculateTrendHistory(data, window) {
-
-    const history =
-        new Array(data.length).fill(null);
-
-    for (
-        let i = window - 1;
-        i < data.length;
-        i++
-    ) {
-
-        history[i] =
-            calculateTrend(
-                data,
-                i,
-                window
-            );
-    }
-
-    return history;
-}
-
-
-/*
- * ============================================================
- * HISTORICAL REVERSAL DETECTION
- * ============================================================
- *
- * We identify historical cases where:
- *
- *   1. USD/CNY was genuinely declining
- *   2. the decline weakened
- *   3. the trend subsequently crossed zero
- *
- * These give us empirical examples of actual reversals.
- */
-
-function findHistoricalReversals(
-    data,
-    trends
-) {
-
-    const reversals = [];
-
-    for (
-        let i = 1;
-        i < trends.length;
-        i++
-    ) {
-
-        const previous =
-            trends[i - 1];
-
-        const current =
-            trends[i];
-
-        if (!previous || !current) {
-            continue;
-        }
-
-        /*
-         * Candidate reversal:
-         *
-         * previous trend was negative
-         * current trend is non-negative.
-         */
-        if (
-            previous.z < 0 &&
-            current.z >= 0
-        ) {
-
-            /*
-             * Require the underlying rate to have actually
-             * experienced a decline beforehand.
-             */
-            const lookback =
-                Math.min(
-                    60,
-                    i
-                );
-
-            const before =
-                data.slice(
-                    i - lookback,
-                    i
-                );
-
-            if (before.length < 10) {
-                continue;
-            }
-
-            const minimum =
-                Math.min(
-                    ...before.map(
-                        x => x.rate
-                    )
-                );
-
-            const startingRate =
-                before[0].rate;
-
-            /*
-             * The episode must have had a meaningful decline.
-             */
-            if (
-                startingRate > minimum &&
-                (startingRate - minimum) /
-                startingRate > 0.001
-            ) {
-
-                reversals.push({
-                    index: i,
-                    zBefore: previous.z,
-                    zAfter: current.z,
-                    improvement:
-                        current.z -
-                        previous.z
-                });
+        if (Math.sign(prevDiff) !== Math.sign(currDiff)) {
+            if (Math.abs(u[i]) > threshold || Math.abs(uPrime[i]) > threshold) {
+                changePointIndex = i;
             }
         }
     }
 
-    return reversals;
+    return { u, u_prime: uPrime, changePointIndex };
 }
 
+function evaluateTrendStatus(seqMkResult) {
+    const { u, changePointIndex } = seqMkResult;
+    const lastIndex = u.length - 1;
+    const latestU = u[lastIndex];
+    const threshold = 1.96;
 
-/*
- * ============================================================
- * LEARN REVERSAL EVIDENCE LEVEL
- * ============================================================
- *
- * We don't choose "1.5" or "2.0" by hand.
- *
- * For each historical reversal, measure how much the Trend Z had
- * improved from the strongest negative point preceding it.
- *
- * The median historical improvement becomes the evidence level.
- *
- * This is a descriptive historical calibration, not a magical
- * universal constant.
- */
-
-function determineReversalEvidenceThreshold(
-    data,
-    trends,
-    reversals
-) {
-
-    const improvements = [];
-
-    for (const reversal of reversals) {
-
-        const start =
-            Math.max(
-                0,
-                reversal.index - 60
-            );
-
-        let minimumZ = Infinity;
-
-        for (
-            let i = start;
-            i < reversal.index;
-            i++
-        ) {
-
-            if (
-                trends[i] &&
-                Number.isFinite(trends[i].z)
-            ) {
-
-                minimumZ =
-                    Math.min(
-                        minimumZ,
-                        trends[i].z
-                    );
-            }
+    if (latestU < -threshold) {
+        if (changePointIndex !== null && changePointIndex > lastIndex - 30) {
+            return "BOTTOMING / REVERSING: Trend break detected.";
         }
-
-        if (Number.isFinite(minimumZ)) {
-
-            const improvement =
-                reversal.zAfter -
-                minimumZ;
-
-            if (improvement > 0) {
-                improvements.push(
-                    improvement
-                );
-            }
-        }
+        return "CONTINUING: Decreasing trend remains active.";
+    } else if (Math.abs(latestU) <= threshold) {
+        return changePointIndex !== null 
+            ? "BOTTOMED / REVERSED: No active decreasing trend."
+            : "FLAT / NO TREND: Decreasing momentum lost.";
+    } else {
+        return "REVERSED: Series now shows an increasing trend.";
     }
-
-    /*
-     * If there are too few historical reversals, use the
-     * empirical distribution of day-to-day Trend Z movements.
-     *
-     * This guarantees that the page continues to function
-     * without inventing a hard-coded threshold.
-     */
-    if (improvements.length < 3) {
-
-        const changes = [];
-
-        for (
-            let i = 1;
-            i < trends.length;
-            i++
-        ) {
-
-            if (
-                trends[i] &&
-                trends[i - 1]
-            ) {
-
-                const change =
-                    trends[i].z -
-                    trends[i - 1].z;
-
-                if (change > 0) {
-                    changes.push(change);
-                }
-            }
-        }
-
-        return {
-            threshold:
-                percentile(
-                    changes,
-                    0.75
-                ),
-            calibrationCount:
-                improvements.length,
-            fallback: true
-        };
-    }
-
-    return {
-        threshold:
-            median(improvements),
-        calibrationCount:
-            improvements.length,
-        fallback: false
-    };
 }
 
+/* ============================================================
+   DATA FETCH & APP INIT
+   ============================================================ */
 
-/*
- * ============================================================
- * CURRENT REVERSAL EVIDENCE
- * ============================================================
- *
- * Starting from the most negative Trend Z in the recent trend
- * episode, measure how far Trend Z has recovered.
- */
+async function fetchExchangeData() {
+    const endDate = getPreviousUTCDate();
+    const url = `https://api.frankfurter.dev/v2/rates?base=USD&quotes=CNY&from=${START_DATE}&to=${endDate}`;
 
-function calculateCurrentReversalEvidence(
-    data,
-    trends,
-    window
-) {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const latestIndex =
-        data.length - 1;
-
-    const latest =
-        trends[latestIndex];
-
-    if (!latest) {
-        return null;
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("No exchange-rate data returned.");
     }
 
-    /*
-     * Look backward until the trend either:
-     *
-     *   - stops being negative
-     *   - or reaches the maximum historical search window.
-     */
-    let minimumZ =
-        latest.z;
-
-    let decliningDays = 0;
-
-    for (
-        let i = latestIndex - 1;
-        i >= Math.max(
-            window - 1,
-            latestIndex - 90
-        );
-        i--
-    ) {
-
-        const t = trends[i];
-
-        if (!t) {
-            break;
-        }
-
-        if (t.z < 0) {
-
-            minimumZ =
-                Math.min(
-                    minimumZ,
-                    t.z
-                );
-
-            decliningDays++;
-
-        } else {
-
-            break;
-        }
-    }
-
-    /*
-     * Evidence is how much Trend Z has recovered from the
-     * strongest negative point.
-     */
-    const evidence =
-        latest.z - minimumZ;
-
-    return {
-        evidence: Math.max(0, evidence),
-        minimumZ,
-        decliningDays
-    };
+    data.sort((a, b) => a.date.localeCompare(b.date));
+    return data;
 }
 
+function renderUI(data, statusText) {
+    const dates = data.map(x => x.date);
+    const rates = data.map(x => x.rate);
+    const latestRate = rates[rates.length - 1];
 
-/*
- * ============================================================
- * SIGNAL
- * ============================================================
- *
- * Three states:
- *
- * WAIT
- * BOTTOMING
- * BUY
- *
- * No arbitrary ±1.5 Z cutoff.
- */
+    // 1. Text Summary Updates
+    document.getElementById("currentRate").textContent = latestRate.toFixed(4);
+    document.getElementById("dateRange").textContent = `Data: ${dates[0]} → ${dates[dates.length - 1]}`;
+    document.getElementById("observationCount").textContent = `Observations: ${data.length}`;
+    document.getElementById("trendStatus").textContent = statusText;
 
-function determineSignal(
-    currentTrend,
-    reversalEvidence,
-    threshold
-) {
-
-    const z =
-        currentTrend.z;
-
-    const evidence =
-        reversalEvidence.evidence;
-
-    /*
-     * Still statistically declining.
-     */
-    if (z < 0) {
-
-        /*
-         * If it has recovered substantially from its negative
-         * extreme, call it BOTTOMING even though the trend has
-         * not crossed zero yet.
-         */
-        if (evidence >= threshold) {
-            return "BOTTOMING";
-        }
-
-        return "WAIT";
-    }
-
-    /*
-     * Trend has crossed zero.
-     *
-     * Require historical-scale reversal evidence before BUY.
-     */
-    if (evidence >= threshold) {
-        return "BUY";
-    }
-
-    return "BOTTOMING";
-}
-
-
-/*
- * ============================================================
- * DATA FINGERPRINT
- * ============================================================
- */
-
-async function makeDatasetHash(data) {
-
-    const canonical =
-        data
-            .map(x =>
-                x.date +
-                "," +
-                x.rate.toPrecision(15)
-            )
-            .join("\n");
-
-    const bytes =
-        new TextEncoder().encode(
-            canonical
-        );
-
-    const digest =
-        await crypto.subtle.digest(
-            "SHA-256",
-            bytes
-        );
-
-    return [...new Uint8Array(digest)]
-        .map(x =>
-            x.toString(16)
-                .padStart(2, "0")
-        )
-        .join("");
-}
-
-
-/*
- * ============================================================
- * CHART
- * ============================================================
- */
-
-function makeChart(data) {
-
-    const ctx =
-        document
-            .getElementById("chart")
-            .getContext("2d");
-
-    new Chart(ctx, {
-
+    // 2. Clean Single Line Chart
+    new Chart(document.getElementById("rateChart"), {
         type: "line",
-
         data: {
-
-            labels:
-                data.map(
-                    x => x.date
-                ),
-
-            datasets: [{
-
-                label: "USD/CNY",
-
-                data:
-                    data.map(
-                        x => x.rate
-                    ),
-
-                borderWidth: 1.5,
-
-                pointRadius: 0,
-
-                tension: 0
-            }]
+            labels: dates,
+            datasets: [
+                {
+                    label: "USD/CNY Rate",
+                    data: rates,
+                    borderColor: "#2f2a24",
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false
+                }
+            ]
         },
-
         options: {
-
             responsive: true,
-
-            interaction: {
-                intersect: false,
-                mode: "index"
-            },
-
-            scales: {
-
-                x: {
-                    ticks: {
-                        maxTicksLimit: 12
-                    }
-                },
-
-                y: {
-                    title: {
-                        display: true,
-                        text: "CNY per USD"
+            interaction: { intersect: false, mode: "index" },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` ${context.parsed.y.toFixed(4)}`;
+                        }
                     }
                 }
             },
-
-            plugins: {
-                legend: {
-                    display: false
+            scales: {
+                x: { ticks: { maxTicksLimit: 12 } },
+                y: {
+                    title: { display: true, text: "CNY per USD" }
                 }
             }
         }
     });
 }
 
-
-/*
- * ============================================================
- * MAIN
- * ============================================================
- */
-
-async function main() {
-
+async function init() {
     try {
+        const data = await fetchExchangeData();
+        const rates = data.map(x => x.rate);
 
-        /*
-         * 1. Get globally identical data.
-         */
-        const result =
-            await fetchRates();
+        const mkResult = sequentialMannKendall(rates);
+        const statusText = evaluateTrendStatus(mkResult);
 
-        const data =
-            result.data;
-
-        /*
-         * 2. Determine natural trend timescale.
-         */
-        const window =
-            determineTrendTimescale(
-                data
-            );
-
-        /*
-         * 3. Calculate Trend Z through history.
-         */
-        const trends =
-            calculateTrendHistory(
-                data,
-                window
-            );
-
-        /*
-         * 4. Find historical actual reversals.
-         */
-        const reversals =
-            findHistoricalReversals(
-                data,
-                trends
-            );
-
-        /*
-         * 5. Learn evidence needed to call something a reversal.
-         */
-        const calibration =
-            determineReversalEvidenceThreshold(
-                data,
-                trends,
-                reversals
-            );
-
-        /*
-         * 6. Current trend.
-         */
-        const latestIndex =
-            data.length - 1;
-
-        const currentTrend =
-            trends[latestIndex];
-
-        /*
-         * 7. Current reversal evidence.
-         */
-        const reversalEvidence =
-            calculateCurrentReversalEvidence(
-                data,
-                trends,
-                window
-            );
-
-        /*
-         * 8. Current signal.
-         */
-        const signal =
-            determineSignal(
-                currentTrend,
-                reversalEvidence,
-                calibration.threshold
-            );
-
-        /*
-         * 9. Latest rate.
-         */
-        const latest =
-            data[latestIndex];
-
-        /*
-         * 10. Dataset fingerprint.
-         */
-        const hash =
-            await makeDatasetHash(
-                data
-            );
-
-
-        /*
-         * ====================================================
-         * DISPLAY
-         * ====================================================
-         */
-
-        const signalElement =
-            document.getElementById(
-                "signal"
-            );
-
-        signalElement.textContent =
-            signal;
-
-
-        let explanation;
-
-        if (signal === "WAIT") {
-
-            explanation =
-                "USD/CNY is still in a statistically declining " +
-                "trend, and the accumulated evidence is not yet " +
-                "strong enough to call the decline over.";
-
-        } else if (signal === "BOTTOMING") {
-
-            explanation =
-                "The declining trend has weakened substantially. " +
-                "USD/CNY may be approaching a turning point, but " +
-                "the evidence is not yet strong enough for a confirmed BUY.";
-
-        } else {
-
-            explanation =
-                "The declining trend has crossed into positive territory " +
-                "and the reversal evidence is comparable to historical " +
-                "turning points. The model therefore gives a BUY signal.";
-        }
-
-        document.getElementById(
-            "signalExplanation"
-        ).textContent =
-            explanation;
-
-
-        document.getElementById(
-            "currentRate"
-        ).textContent =
-            latest.rate.toFixed(4);
-
-
-        document.getElementById(
-            "timescale"
-        ).textContent =
-            window + " days";
-
-
-        document.getElementById(
-            "trendZ"
-        ).textContent =
-            currentTrend.z.toFixed(3);
-
-
-        /*
-         * Convert log slope into approximate percentage/day.
-         */
-        document.getElementById(
-            "trendSlope"
-        ).textContent =
-            (
-                currentTrend.slope * 100
-            ).toFixed(4) +
-            "% / day";
-
-
-        document.getElementById(
-            "reversalEvidence"
-        ).textContent =
-            reversalEvidence.evidence.toFixed(3);
-
-
-        document.getElementById(
-            "historicalReversals"
-        ).textContent =
-            calibration.calibrationCount;
-
-
-        /*
-         * Data information.
-         */
-        document.getElementById(
-            "cutoffDate"
-        ).textContent =
-            result.cutoff + " UTC";
-
-
-        document.getElementById(
-            "firstDate"
-        ).textContent =
-            data[0].date;
-
-
-        document.getElementById(
-            "lastDate"
-        ).textContent =
-            data[data.length - 1].date;
-
-
-        document.getElementById(
-            "observationCount"
-        ).textContent =
-            data.length;
-
-
-        document.getElementById(
-            "latestRate"
-        ).textContent =
-            latest.date +
-            " = " +
-            latest.rate.toFixed(8);
-
-
-        document.getElementById(
-            "datasetHash"
-        ).textContent =
-            hash;
-
-
-        /*
-         * Chart.
-         */
-        makeChart(data);
-
-
-        /*
-         * Console diagnostics.
-         */
-        console.log({
-
-            signal,
-
-            cutoff:
-                result.cutoff,
-
-            observations:
-                data.length,
-
-            firstDate:
-                data[0].date,
-
-            lastDate:
-                latest.date,
-
-            latestRate:
-                latest.rate,
-
-            trendTimescale:
-                window,
-
-            trendZ:
-                currentTrend.z,
-
-            trendSlope:
-                currentTrend.slope,
-
-            reversalEvidence:
-                reversalEvidence.evidence,
-
-            reversalThreshold:
-                calibration.threshold,
-
-            historicalReversals:
-                reversals.length,
-
-            calibrationReversals:
-                calibration.calibrationCount,
-
-            fallbackCalibration:
-                calibration.fallback,
-
-            datasetHash:
-                hash
-        });
-
-
-        /*
-         * Show page.
-         */
-        document.getElementById(
-            "loading"
-        ).style.display = "none";
-
-        document.getElementById(
-            "content"
-        ).style.display = "block";
-
-
+        renderUI(data, statusText);
     } catch (error) {
-
         console.error(error);
-
-        document.getElementById(
-            "loading"
-        ).textContent =
-            "Unable to load exchange-rate data: " +
-            error.message;
+        document.getElementById("error").textContent = `Unable to load exchange-rate data: ${error.message}`;
     }
 }
 
-
-main();
-
+init();
 </script>
-
 </body>
 </html>
