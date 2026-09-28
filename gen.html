@@ -28,17 +28,6 @@ h1 {
     min-height: 80px;
 }
 
-#meal h2 {
-    font-size: 1.8rem;
-    font-weight: 400;
-    padding: 25px;
-    border: 1px solid #ddd5c8;
-    background: #fffdf8;
-    border-radius: 12px;
-    display: inline-block;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-}
-
 #meal button {
     margin: 8px;
     padding: 14px 28px;
@@ -65,6 +54,7 @@ h1 {
     letter-spacing: 1px;
     margin-bottom: 12px;
 }
+
 .modal {
     display: none;
     position: fixed;
@@ -97,28 +87,6 @@ h1 {
     color: black;
 }
 
-#modal-body h2 {
-    margin-top: 0;
-    text-align: center;
-    font-weight: 400;
-}
-
-.favorites-list {
-    list-style: none;
-    padding: 0;
-    margin: 20px 0 0;
-}
-
-.favorites-list li {
-    padding: 12px 0;
-    border-bottom: 1px solid #e8e1d6;
-    font-size: 1.15rem;
-}
-
-.favorites-list li:last-child {
-    border-bottom: none;
-}
-#laundry,
 #chores {
     display: none;
     text-align: center;
@@ -146,19 +114,19 @@ h1 {
 <h1>Daily Curated Choices</h1>
 
 <div id="meal">
-    <button id="generate-choice">🥗 Cooking?</button>
     <button id="generate-sweets">🍰 Sweet?</button>
-    <button id="generate-favorite">⭐ Golden Triangle Restaurant?</button>
     <button id="pant-button">👖 Pants?</button>
 </div>
-<div id="laundry"></div>
+
 <div id="chores"></div>
+
 <div id="modal" class="modal">
     <div class="modal-content">
         <span id="close-modal" class="close">&times;</span>
         <div id="modal-body"></div>
     </div>
 </div>
+
 <script>
 const referenceWeek = new Date("2026-07-21");
 
@@ -175,29 +143,11 @@ const choreSchedule = {
     "Mopping": [5, 2],
     "Face Exfoliating": [6, 1]
 };
+
 const pants = ["Green", "Beige", "Blue"];
-const coffee = [
-    "Intelligentsia",
-    "Klatch",
-    "Kaldi"
-];
-const favorites = [
-    "Matu",
-    "Loukà",
-    "Very Thai",
-    "Novikov",
-    "Azur",
-    "Khinkali",
-    "Avra",
-    "Bacari",
-    "Nua",
-    "Hideaway",
-    "La ong",
-    "Mr. Chow"
-];
+
 function getWeeksElapsed() {
     const today = new Date();
-
     return Math.floor(
         (today - referenceWeek) /
         (1000 * 60 * 60 * 24 * 7)
@@ -268,15 +218,11 @@ showReminder(
     getChoreList()
 );
 
-
-
-function randomItem(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
 function showModal(html) {
     document.getElementById("modal-body").innerHTML = html;
     document.getElementById("modal").style.display = "block";
 }
+
 function showResult(text) {
     showModal(`
         <p style="text-align:center;font-size:1.4rem;">
@@ -297,23 +243,6 @@ window.onclick = function(e) {
     }
 };
 
-document.getElementById("generate-choice").onclick = () => {
-    const makeOwn = Math.floor(Math.random() * 7) !== 0;
-
-    showResult(
-        makeOwn
-            ? "Home cooking & office coffee"
-            : `Restaurant & coffee shop (${randomItem(coffee)})`
-    );
-};
-
-document.getElementById("pant-button").onclick = () => {
-    const pant = getPantToday();
-
-    showResult(
-        pant ?? "It's the weekend!",
-    );
-};
 document.getElementById("generate-sweets").onclick = () => {
     const haveSweets = Math.floor(Math.random() * 7) === 0;
 
@@ -321,8 +250,13 @@ document.getElementById("generate-sweets").onclick = () => {
         haveSweets ? "Yes!" : "No"
     );
 };
-document.getElementById("generate-favorite").onclick = () => {
-    showResult(randomItem(favorites));
+
+document.getElementById("pant-button").onclick = () => {
+    const pant = getPantToday();
+
+    showResult(
+        pant ?? "It's the weekend!"
+    );
 };
 
 function updateDate() {
@@ -341,6 +275,5 @@ function updateDate() {
 
 updateDate();
 </script>
-
 </body>
 </html>
