@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Weight Tracking</title>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <!-- Switched to jsDelivr bundle for higher reliability -->
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -181,6 +182,12 @@ function formatCN(dateStr) {
 }
 
 function renderPlot(y) {
+  if (typeof Plotly === "undefined") {
+    console.error("Plotly library is not loaded.");
+    document.getElementById("plot").innerHTML = "<p style='padding:20px;color:red;'>Failed to load Plotly library. Please check your network connection.</p>";
+    return;
+  }
+
   const dates = generateDates(START_DATE_STR, y.length);
   const smoothedSignal = reconstructMirroredTimeSeries(y).map(v => Number(v.toFixed(2)));
   const { mx, my, labels } = getMilestones(dates, y);
@@ -197,7 +204,6 @@ function renderPlot(y) {
     connectgaps: true,
     line: { width: 2, color: LINE_COLOR },
     name: "实际",
-    // Single-line formatting inside the unified hover card
     hovertemplate: "%{y:.2f} kg<extra>实际</extra>"
   };
 
@@ -237,8 +243,8 @@ function renderPlot(y) {
     plot_bgcolor: BG_COLOR,
     showlegend: false,
     
-    // Combines all values into a single tooltip box with a full vertical line
     hovermode: "x unified",
+    hoverdistance: -1,
 
     margin: { l: 60, r: 60, t: 60, b: 60 },
     font: { family: "STKaiti, Songti SC, serif", size: 14, color: FRAME_COLOR },
@@ -272,7 +278,13 @@ function renderPlot(y) {
     }
   };
 
-  Plotly.newPlot("plot", [weightTrace, smoothTrace, milestoneTrace], layout, { responsive: true });
+  const config = {
+    responsive: true,
+    displayModeBar: false,
+    doubleClick: "reset"
+  };
+
+  Plotly.newPlot("plot", [weightTrace, smoothTrace, milestoneTrace], layout, config);
 }
 
 // ==========================================
@@ -379,7 +391,7 @@ document.addEventListener("keydown", (e) => {
     deleteLatest();
   } else if (key === "g") {
     window.location.href = "gen.html";
-  } else if (key === "r") {
+  } else if (key === "x") {
     window.location.href = "usd-cny-rate.html";
   }
 });

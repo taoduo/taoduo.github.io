@@ -267,6 +267,8 @@ function renderUI(data, statusText) {
                     borderColor: "#2f2a24",
                     borderWidth: 1.5,
                     pointRadius: 0,
+                    pointHoverRadius: 4, // Added to give hover state a visual target
+                    pointHitRadius: 10,   // Increases hit target area around cursor
                     tension: 0.1,
                     fill: false
                 }
@@ -274,7 +276,16 @@ function renderUI(data, statusText) {
         },
         options: {
             responsive: true,
-            interaction: { intersect: false, mode: "index" },
+            events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+            interaction: { 
+                intersect: false, 
+                mode: "index",
+                axis: "x" // Continuously tracks hover along the horizontal axis
+            },
+            hover: {
+                mode: "index",
+                intersect: false
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
