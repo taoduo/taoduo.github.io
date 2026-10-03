@@ -128,41 +128,48 @@ h1 {
 </div>
 
 <script>
-const referenceWeek = new Date("2026-07-21");
-
+// Format: [intervalInWeeks, "startDateString"]
 const choreSchedule = {
-    "Wash two trays, dish rack": [1, 4],
-    "Laundry: hamper, sleepwear, towels": [2, 1],
-    "Laundry: pants": [6, 3],
-    "Wipe down surfaces": [3, 2],
-    "Laundry: sheet, pillow cases": [0, 1],
-    "Laundry: duvet": [4, 2],
-    "Laundry: bathmat": [4, 4],
-    "Change bath towel": [5, 1],
-    "Check mail": [5, 1],
-    "Mopping": [5, 2],
-    "Face Exfoliating": [6, 1]
+    // Mondays
+    "Wash two trays, dish rack": [4, "2026-10-5"],
+    // Tuesdays
+    "Laundry: bathmat": [4, "2026-10-6"],
+    "Laundry: duvet": [2, "2026-10-6"],
+    // Wednesdays
+    // Thursdays
+    "Change bath towel": [1, "2026-10-1"],
+    // Fridays
+    "Check mail": [1, "2026-10-2"],
+    "Vacuuming and mopping": [1, "2026-10-2"],
+    // Saturdays
+    "Face exfoliating": [1, "2026-10-3"],
+    "Change shower filter head": [12, "2026-10-3"],
+    "Laundry: hamper, sleepwear, towels": [1, "2026-10-3"],
+    // Sundays
+    "Wipe down surfaces": [4, "2026-10-11"],
+    "Laundry: pants": [3, "2026-10-4"],
+    "Laundry: sheet, pillow cases": [1, "2026-10-4"]
 };
 
+const pantsRef = new Date("2026-07-21");
 const pants = ["Green", "Beige", "Blue"];
-
-function getWeeksElapsed() {
-    const today = new Date();
-    return Math.floor(
-        (today - referenceWeek) /
-        (1000 * 60 * 60 * 24 * 7)
-    );
-}
 
 function getChoreList() {
     const today = new Date();
-    const weeks = getWeeksElapsed();
+    // Normalize today to start-of-day for precise date math
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     return Object.entries(choreSchedule)
-        .filter(([_, [day, interval]]) =>
-            today.getDay() === day &&
-            weeks % interval === 0
-        )
+        .filter(([_, [interval, startDateStr]]) => {
+            const choreStartDate = new Date(startDateStr);
+            const startMidnight = new Date(choreStartDate.getFullYear(), choreStartDate.getMonth(), choreStartDate.getDate());
+
+            const diffInTime = todayMidnight - startMidnight;
+            const diffInDays = Math.floor(diffInTime / (1000 * 60 * 60 * 24));
+
+            // Must fall on or after start date and exactly on a day that is a multiple of interval weeks
+            return diffInDays >= 0 && diffInDays % (interval * 7) === 0;
+        })
         .map(([item]) => item);
 }
 
@@ -175,7 +182,7 @@ function getPantToday() {
     if (day < 1 || day > 5) return null;
 
     const weeksElapsed = Math.floor(
-        (today - referenceWeek) / (1000 * 60 * 60 * 24 * 7)
+        (today - pantsRef) / (1000 * 60 * 60 * 24 * 7)
     );
 
     const rotation = weeksElapsed % 3;
