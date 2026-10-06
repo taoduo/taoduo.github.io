@@ -156,18 +156,18 @@ const pants = ["Green", "Beige", "Blue"];
 
 function getChoreList() {
     const today = new Date();
-    // Normalize today to start-of-day for precise date math
+    // Start of today in local time
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     return Object.entries(choreSchedule)
         .filter(([_, [interval, startDateStr]]) => {
-            const choreStartDate = new Date(startDateStr);
-            const startMidnight = new Date(choreStartDate.getFullYear(), choreStartDate.getMonth(), choreStartDate.getDate());
+            // Safely parse "YYYY-MM-DD" as local midnight across all mobile browsers
+            const [year, month, day] = startDateStr.split("-").map(Number);
+            const startMidnight = new Date(year, month - 1, day);
 
             const diffInTime = todayMidnight - startMidnight;
-            const diffInDays = Math.floor(diffInTime / (1000 * 60 * 60 * 24));
+            const diffInDays = Math.round(diffInTime / (1000 * 60 * 60 * 24));
 
-            // Must fall on or after start date and exactly on a day that is a multiple of interval weeks
             return diffInDays >= 0 && diffInDays % (interval * 7) === 0;
         })
         .map(([item]) => item);
