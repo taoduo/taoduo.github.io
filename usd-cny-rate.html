@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USD / CNY</title>
+    <title>美元 / 人民币 (USD / CNY)</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -105,20 +105,20 @@
 <body>
 <div class="container">
 
-    <h1>USD / CNY</h1>
+    <h1>美元 / 人民币 (USD / CNY)</h1>
 
     <div class="header-section">
         <div class="current">
-            <span>1 USD = </span>
-            <span id="currentRate">Loading...</span>
-            <span> CNY</span>
+            <span>1 美元 = </span>
+            <span id="currentRate">正在加载...</span>
+            <span> 人民币</span>
         </div>
     </div>
 
-    <!-- Clear Trend Summary -->
+    <!-- 清晰的趋势摘要 -->
     <div class="analysis-card">
-        <h2>Trend Detection</h2>
-        <div class="status-text" id="trendStatus">Analyzing trend...</div>
+        <h2>趋势检测</h2>
+        <div class="status-text" id="trendStatus">正在分析趋势...</div>
     </div>
 
     <div class="chart-container">
@@ -126,7 +126,7 @@
     </div>
 
     <div class="info">
-        <div>Data source: Frankfurter API</div>
+        <div>数据来源：Frankfurter API</div>
         <div id="dateRange"></div>
         <div id="observationCount"></div>
     </div>
@@ -137,7 +137,7 @@
 
 <script>
 /* ============================================================
-   CONFIG & UTILITIES
+   配置与工具函数
    ============================================================ */
 
 const START_DATE = "2025-11-03";
@@ -151,7 +151,7 @@ function getPreviousUTCDate() {
 }
 
 /* ============================================================
-   STATISTICAL ENGINE: Sequential Mann-Kendall Test
+   统计引擎：贯序曼-肯德尔检验 (Sequential Mann-Kendall Test)
    ============================================================ */
 
 function sequentialMannKendall(data) {
@@ -212,20 +212,20 @@ function evaluateTrendStatus(seqMkResult) {
 
     if (latestU < -threshold) {
         if (changePointIndex !== null && changePointIndex > lastIndex - 30) {
-            return "BOTTOMING / REVERSING: Trend break detected.";
+            return "触底 / 反转：检测到趋势破位。";
         }
-        return "CONTINUING: Decreasing trend remains active.";
+        return "持续中：下跌趋势仍然有效。";
     } else if (Math.abs(latestU) <= threshold) {
         return changePointIndex !== null 
-            ? "BOTTOMED / REVERSED: No active decreasing trend."
-            : "FLAT / NO TREND: Decreasing momentum lost.";
+            ? "已触底 / 已反转：当前无活跃的下跌趋势。"
+            : "盘整 / 无趋势：下跌动能减弱。";
     } else {
-        return "REVERSED: Series now shows an increasing trend.";
+        return "已反转：序列现已呈现上升趋势。";
     }
 }
 
 /* ============================================================
-   DATA FETCH & APP INIT
+   数据获取与应用初始化
    ============================================================ */
 
 async function fetchExchangeData() {
@@ -237,7 +237,7 @@ async function fetchExchangeData() {
 
     const data = await response.json();
     if (!Array.isArray(data) || data.length === 0) {
-        throw new Error("No exchange-rate data returned.");
+        throw new Error("未返回汇率数据。");
     }
 
     data.sort((a, b) => a.date.localeCompare(b.date));
@@ -249,26 +249,26 @@ function renderUI(data, statusText) {
     const rates = data.map(x => x.rate);
     const latestRate = rates[rates.length - 1];
 
-    // 1. Text Summary Updates
+    // 1. 文本摘要更新
     document.getElementById("currentRate").textContent = latestRate.toFixed(4);
-    document.getElementById("dateRange").textContent = `Data: ${dates[0]} → ${dates[dates.length - 1]}`;
-    document.getElementById("observationCount").textContent = `Observations: ${data.length}`;
+    document.getElementById("dateRange").textContent = `数据区间：${dates[0]} → ${dates[dates.length - 1]}`;
+    document.getElementById("observationCount").textContent = `观测样本数：${data.length}`;
     document.getElementById("trendStatus").textContent = statusText;
 
-    // 2. Clean Single Line Chart
+    // 2. 简洁的单线图表
     new Chart(document.getElementById("rateChart"), {
         type: "line",
         data: {
             labels: dates,
             datasets: [
                 {
-                    label: "USD/CNY Rate",
+                    label: "美元/人民币汇率",
                     data: rates,
                     borderColor: "#2f2a24",
                     borderWidth: 1.5,
                     pointRadius: 0,
-                    pointHoverRadius: 4, // Added to give hover state a visual target
-                    pointHitRadius: 10,   // Increases hit target area around cursor
+                    pointHoverRadius: 4, 
+                    pointHitRadius: 10,   
                     tension: 0.1,
                     fill: false
                 }
@@ -280,7 +280,7 @@ function renderUI(data, statusText) {
             interaction: { 
                 intersect: false, 
                 mode: "index",
-                axis: "x" // Continuously tracks hover along the horizontal axis
+                axis: "x" 
             },
             hover: {
                 mode: "index",
@@ -299,7 +299,7 @@ function renderUI(data, statusText) {
             scales: {
                 x: { ticks: { maxTicksLimit: 12 } },
                 y: {
-                    title: { display: true, text: "CNY per USD" }
+                    title: { display: true, text: "每美元兑人民币" }
                 }
             }
         }
@@ -317,7 +317,7 @@ async function init() {
         renderUI(data, statusText);
     } catch (error) {
         console.error(error);
-        document.getElementById("error").textContent = `Unable to load exchange-rate data: ${error.message}`;
+        document.getElementById("error").textContent = `无法加载汇率数据：${error.message}`;
     }
 }
 
