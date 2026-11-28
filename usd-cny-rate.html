@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美元 / 人民币 (USD / CNY)</title>
+    <title>USD / CNY 最显著独立区间变动与单侧 Bonferroni 检验</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -16,6 +16,12 @@
             --border-color: #b8afa3;
             --accent-border: #8c8275;
             --danger-color: #9b2c2c;
+            --positive-color: #2f6f4e;
+            --highlight-bg: #ebe1d1;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -23,7 +29,7 @@
             padding: 40px 20px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-family: Georgia, "Times New Roman", serif;
+            font-family: Georgia, "Times New Roman", "PingFang SC", "Microsoft YaHei", serif;
         }
 
         .container {
@@ -32,11 +38,11 @@
         }
 
         h1 {
-            font-size: 32px;
+            font-size: 30px;
             font-weight: normal;
-            margin-bottom: 20px;
+            margin: 0 0 24px 0;
             border-bottom: 1px solid var(--accent-border);
-            padding-bottom: 10px;
+            padding-bottom: 12px;
         }
 
         .header-section {
@@ -44,11 +50,12 @@
             justify-content: space-between;
             align-items: baseline;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
         .current {
-            font-size: 42px;
+            font-size: 38px;
         }
 
         .current span {
@@ -56,47 +63,104 @@
             color: var(--muted-text);
         }
 
-        /* Trend Status Card */
-        .analysis-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-left: 4px solid #36a2eb;
-            padding: 16px 20px;
-            margin-bottom: 25px;
-            border-radius: 2px;
-        }
-
-        .analysis-card h2 {
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 0 0 6px 0;
-            color: var(--muted-text);
-        }
-
-        .status-text {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .chart-container {
+        .card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             padding: 20px;
+            margin-bottom: 24px;
+            border-radius: 2px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .card h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0;
+            color: var(--muted-text);
+        }
+
+        .bonferroni-verdict {
+            font-size: 19px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .bonferroni-verdict.sig {
+            color: var(--danger-color);
+        }
+
+        .bonferroni-verdict.nonsig {
+            color: var(--positive-color);
+        }
+
+        .bonferroni-details {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-color);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 9px 10px;
+            border-bottom: 1px solid #dfd7cb;
+        }
+
+        th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted-text);
+            font-weight: normal;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tbody tr.top-row {
+            background: var(--highlight-bg);
+            font-weight: bold;
+        }
+
+        .badge-sig {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+
+        .badge-nonsig {
+            color: var(--positive-color);
         }
 
         .info {
-            margin-top: 20px;
+            margin-top: 18px;
             font-size: 14px;
             line-height: 1.7;
             color: #625b53;
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
+            gap: 10px;
         }
 
         .error {
             color: var(--danger-color);
-            margin-top: 20px;
+            margin-top: 18px;
             font-weight: bold;
         }
     </style>
@@ -115,20 +179,59 @@
         </div>
     </div>
 
-    <!-- 清晰的趋势摘要 -->
-    <div class="analysis-card">
-        <h2>趋势检测</h2>
-        <div class="status-text" id="trendStatus">正在分析趋势...</div>
+    <!-- 1. 汇率折线图 -->
+    <div class="card">
+        <div class="card-header">
+            <h2>汇率走势</h2>
+        </div>
+        <canvas id="rateChart"></canvas>
     </div>
 
-    <div class="chart-container">
-        <canvas id="rateChart"></canvas>
+    <!-- 2. 折线图下方、直方图上方的最显著区间检验摘要卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <h2 id="testTitle">最显著独立区间单侧 Bonferroni 检验（右尾，α = 0.05）</h2>
+        </div>
+        <div id="bonferroniVerdict" class="bonferroni-verdict">正在计算...</div>
+        <div id="bonferroniDetails" class="bonferroni-details"></div>
+    </div>
+
+    <!-- 3. 仅展示最显著跨度 k* 的非重叠变动频数直方图 -->
+    <div class="card">
+        <div class="card-header">
+            <h2 id="histTitle">最显著独立区间变动频数分布</h2>
+        </div>
+        <canvas id="distChart"></canvas>
+    </div>
+
+    <!-- 4. 所有可用跨度（样本数 ≥ 30）总览表 -->
+    <div class="card">
+        <div class="card-header">
+            <h2>全部独立区间跨度检验总览（至少 30 个非重叠样本，高亮为最显著跨度）</h2>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>跨度 (k 天)</th>
+                        <th>独立样本数 m</th>
+                        <th>最新区间</th>
+                        <th>最新变动</th>
+                        <th>均值 μ</th>
+                        <th>显著性阈值 (&gt;)</th>
+                        <th>z 值</th>
+                        <th>结果</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <div class="info">
         <div>数据来源：Frankfurter API</div>
         <div id="dateRange"></div>
-        <div id="observationCount"></div>
+        <div id="countsInfo"></div>
     </div>
 
     <div id="error" class="error"></div>
@@ -136,11 +239,9 @@
 </div>
 
 <script>
-/* ============================================================
-   配置与工具函数
-   ============================================================ */
-
 const START_DATE = "2025-11-03";
+const ALPHA = 0.05;
+const MIN_INDEPENDENT_SAMPLES = 20;
 
 function getPreviousUTCDate() {
     const now = new Date();
@@ -150,83 +251,196 @@ function getPreviousUTCDate() {
     return yesterday.toISOString().slice(0, 10);
 }
 
-/* ============================================================
-   统计引擎：贯序曼-肯德尔检验 (Sequential Mann-Kendall Test)
-   ============================================================ */
-
-function sequentialMannKendall(data) {
-    const n = data.length;
-    const u = new Array(n).fill(0);
-    const uPrime = new Array(n).fill(0);
-
-    function computeProgressiveU(series) {
-        const len = series.length;
-        const result = new Array(len).fill(0);
-        let t = 0;
-        
-        for (let i = 1; i < len; i++) {
-            let r_i = 0;
-            for (let j = 0; j < i; j++) {
-                if (series[i] > series[j]) r_i++;
-            }
-            t += r_i;
-
-            const E = (i * (i + 1)) / 4;
-            const Var = (i * (i + 1) * (2 * i + 5)) / 72;
-
-            result[i] = Var > 0 ? (t - E) / Math.sqrt(Var) : 0;
-        }
-        return result;
-    }
-
-    const forwardU = computeProgressiveU(data);
-    const backwardU = computeProgressiveU([...data].reverse());
-
-    for (let i = 0; i < n; i++) {
-        u[i] = forwardU[i];
-        uPrime[i] = -backwardU[n - 1 - i];
-    }
-
-    const threshold = 1.96;
-    let changePointIndex = null;
-
-    for (let i = 1; i < n; i++) {
-        const prevDiff = u[i - 1] - uPrime[i - 1];
-        const currDiff = u[i] - uPrime[i];
-
-        if (Math.sign(prevDiff) !== Math.sign(currDiff)) {
-            if (Math.abs(u[i]) > threshold || Math.abs(uPrime[i]) > threshold) {
-                changePointIndex = i;
-            }
-        }
-    }
-
-    return { u, u_prime: uPrime, changePointIndex };
+// 标准正态分布 CDF Φ(x)
+function normalCDF(x) {
+    const sign = x < 0 ? -1 : 1;
+    const absX = Math.abs(x) / Math.SQRT2;
+    const t = 1 / (1 + 0.3275911 * absX);
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const erf = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+    return 0.5 * (1 + sign * erf);
 }
 
-function evaluateTrendStatus(seqMkResult) {
-    const { u, changePointIndex } = seqMkResult;
-    const lastIndex = u.length - 1;
-    const latestU = u[lastIndex];
-    const threshold = 1.96;
+// 标准正态分布分位数 z_{1 - p}
+function normalInvCDF(p) {
+    if (p <= 0 || p >= 1) return NaN;
+    const a = [-3.969683028665376e+01,  2.209460984245205e+02, -2.759285104469687e+02,
+                1.383577518672690e+02, -3.066479806614716e+01,  2.506628277459239e+00];
+    const b = [-5.447609879822406e+01,  1.615858368580409e+02, -1.556989798598866e+02,
+                6.680131188771972e+01, -1.328068155288572e+01];
+    const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e-00,
+               -2.549732539343734e-00,  4.374664141464968e-00,  2.938163982698783e-00];
+    const d = [ 7.784695709041462e-03,  3.224671290700398e-01,  2.445134137142996e-00,
+                3.754408661907416e-00];
+    const plow = 0.02425;
+    const phigh = 1 - plow;
 
-    if (latestU < -threshold) {
-        if (changePointIndex !== null && changePointIndex > lastIndex - 30) {
-            return "触底 / 反转：检测到趋势破位。";
-        }
-        return "持续中：下跌趋势仍然有效。";
-    } else if (Math.abs(latestU) <= threshold) {
-        return changePointIndex !== null 
-            ? "已触底 / 已反转：当前无活跃的下跌趋势。"
-            : "盘整 / 无趋势：下跌动能减弱。";
-    } else {
-        return "已反转：序列现已呈现上升趋势。";
+    let q, r;
+    if (p < plow) {
+        q = Math.sqrt(-2 * Math.log(p));
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
     }
+    if (p <= phigh) {
+        q = p - 0.5;
+        r = q * q;
+        return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+               (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+    }
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
 }
 
-/* ============================================================
-   数据获取与应用初始化
-   ============================================================ */
+/**
+ * 从末尾索引 N-1 开始向前按固定步长 k 切分非重叠区间：
+ * [N-1-k, N-1], [N-1-2k, N-1-k], ... 直到剩余不足 k 步为止。
+ */
+function computeIndependentChanges(data, k) {
+    const changes = [];
+    for (let endIdx = data.length - 1; endIdx - k >= 0; endIdx -= k) {
+        const startIdx = endIdx - k;
+        changes.push({
+            date: data[endIdx].date,
+            prevDate: data[startIdx].date,
+            delta: data[endIdx].rate - data[startIdx].rate
+        });
+    }
+    changes.reverse();
+    return changes;
+}
+
+function bonferroniTestLastOneSided(changes, k, alpha = ALPHA) {
+    const m = changes.length;
+    const values = changes.map(c => c.delta);
+    const mean = values.reduce((acc, v) => acc + v, 0) / m;
+    const variance = m > 1
+        ? values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / (m - 1)
+        : 0;
+    const std = Math.sqrt(variance);
+
+    const last = changes[m - 1];
+    const zLast = std > 0 ? (last.delta - mean) / std : 0;
+    const pValue = 1 - normalCDF(zLast);
+    const bonfAlpha = alpha / m;
+    const zCrit = normalInvCDF(1 - bonfAlpha);
+    const deltaCrit = mean + zCrit * std;
+    const isSignificant = last.delta > deltaCrit;
+
+    return {
+        k,
+        m,
+        changes,
+        mean,
+        std,
+        last,
+        zLast,
+        pValue,
+        bonfAlpha,
+        zCrit,
+        deltaCrit,
+        isSignificant
+    };
+}
+
+function getNiceStepSize(span, targetTicks = 8) {
+    const rawStep = Math.max(span, 1e-4) / targetTicks;
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / mag;
+    let niceNorm = 1;
+    if (norm > 5) niceNorm = 10;
+    else if (norm > 2) niceNorm = 5;
+    else if (norm > 1) niceNorm = 2;
+    return niceNorm * mag;
+}
+
+function buildHistogram(values, binCount = 16) {
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    if (rawMin === rawMax) {
+        const stepSize = 0.01;
+        return {
+            points: [{ x: rawMin, y: values.length, start: rawMin - stepSize / 2, end: rawMin + stepSize / 2 }],
+            minAxis: rawMin - stepSize / 2,
+            maxAxis: rawMax + stepSize / 2,
+            stepSize,
+            ticks: [0]
+        };
+    }
+
+    const span = rawMax - rawMin;
+    const stepSize = getNiceStepSize(span, 8);
+    const width = span / binCount;
+    const counts = new Array(binCount).fill(0);
+
+    for (const v of values) {
+        let idx = Math.floor((v - rawMin) / width);
+        if (idx >= binCount) idx = binCount - 1;
+        if (idx < 0) idx = 0;
+        counts[idx]++;
+    }
+
+    const points = counts.map((count, b) => {
+        const start = rawMin + b * width;
+        const end = start + width;
+        const center = start + width / 2;
+        return { x: center, y: count, start, end };
+    });
+
+    const ticks = [];
+    const kStart = Math.ceil(rawMin / stepSize);
+    const kEnd = Math.floor(rawMax / stepSize);
+    for (let k = kStart; k <= kEnd; k++) {
+        const val = Number((k * stepSize).toFixed(8));
+        ticks.push(Math.abs(val) < 1e-12 ? 0 : val);
+    }
+
+    return { points, minAxis: rawMin, maxAxis: rawMax, stepSize, ticks };
+}
+
+const lastChangeValueLinePlugin = {
+    id: "lastChangeValueLinePlugin",
+    afterDatasetsDraw(chart, args, pluginOptions) {
+        const value = pluginOptions?.value;
+        if (typeof value !== "number" || Number.isNaN(value)) return;
+
+        const { ctx, chartArea, scales } = chart;
+        const xScale = scales.x;
+        if (!xScale || !chartArea) return;
+
+        const xPos = xScale.getPixelForValue(value);
+        if (xPos < chartArea.left || xPos > chartArea.right) return;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = pluginOptions.color || "#9b2c2c";
+        ctx.moveTo(xPos, chartArea.top);
+        ctx.lineTo(xPos, chartArea.bottom);
+        ctx.stroke();
+
+        if (pluginOptions.label) {
+            ctx.setLineDash([]);
+            ctx.font = "bold 12px Georgia, serif";
+            ctx.fillStyle = pluginOptions.color || "#9b2c2c";
+            const nearRight = xPos > chartArea.right - 130;
+            ctx.textAlign = nearRight ? "right" : "left";
+            const xText = nearRight ? xPos - 6 : xPos + 6;
+            ctx.fillText(pluginOptions.label, xText, chartArea.top + 14);
+        }
+        ctx.restore();
+    }
+};
+
+function fmtSigned(val, decimals = 5) {
+    const sign = val >= 0 ? "+" : "";
+    return `${sign}${val.toFixed(decimals)}`;
+}
 
 async function fetchExchangeData() {
     const endDate = getPreviousUTCDate();
@@ -236,26 +450,134 @@ async function fetchExchangeData() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
-        throw new Error("未返回汇率数据。");
+    if (!Array.isArray(data) || data.length < MIN_INDEPENDENT_SAMPLES + 1) {
+        throw new Error(`可用汇率数据不足（需要至少 ${MIN_INDEPENDENT_SAMPLES + 1} 个观测点）。`);
     }
 
     data.sort((a, b) => a.date.localeCompare(b.date));
     return data;
 }
 
-function renderUI(data, statusText) {
+function renderMostSignificantHistogram(mostSig) {
+    document.getElementById("testTitle").textContent =
+        `最显著独立区间：k = ${mostSig.k} 天（右尾，α = 0.05，独立样本数 m = ${mostSig.m}）`;
+    document.getElementById("histTitle").textContent =
+        `最显著跨度（${mostSig.k} 天）独立区间变动 (Δr) 频数分布`;
+
+    const verdictEl = document.getElementById("bonferroniVerdict");
+    if (mostSig.isSignificant) {
+        verdictEl.textContent = `k = ${mostSig.k} 天右尾显著偏高（通过单侧 Bonferroni 校正）`;
+        verdictEl.className = "bonferroni-verdict sig";
+    } else {
+        verdictEl.textContent = `k = ${mostSig.k} 天最显著，但未通过单侧 Bonferroni 校正`;
+        verdictEl.className = "bonferroni-verdict nonsig";
+    }
+
+    document.getElementById("bonferroniDetails").innerHTML = [
+        `最新 ${mostSig.k} 天变动（${mostSig.last.date} 相对 ${mostSig.last.prevDate}）：<strong>${fmtSigned(mostSig.last.delta)}</strong>`,
+        `均值 μ = ${fmtSigned(mostSig.mean)}`,
+        `显著性所需变动阈值：<strong>&gt; ${fmtSigned(mostSig.deltaCrit)}</strong>`
+    ].join(" ｜ ");
+
+    const binCount = Math.max(10, Math.min(24, Math.round(Math.sqrt(mostSig.m) * 1.5)));
+    const hist = buildHistogram(mostSig.changes.map(c => c.delta), binCount);
+
+    new Chart(document.getElementById("distChart"), {
+        type: "bar",
+        data: {
+            datasets: [{
+                label: "区间变动频数",
+                data: hist.points,
+                backgroundColor: "#8c8275",
+                borderWidth: 0,
+                barPercentage: 1.0,
+                categoryPercentage: 1.0
+            }]
+        },
+        options: {
+            responsive: true,
+            parsing: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: function(items) {
+                            const raw = items[0]?.raw;
+                            if (!raw) return "";
+                            return `[${raw.start.toFixed(4)}, ${raw.end.toFixed(4)})`;
+                        },
+                        label: function(context) {
+                            return ` 频数: ${context.parsed.y}`;
+                        }
+                    }
+                },
+                lastChangeValueLinePlugin: {
+                    value: mostSig.last.delta,
+                    color: "#9b2c2c",
+                    label: `最新 (${mostSig.k}d): ${fmtSigned(mostSig.last.delta)}`
+                }
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min: hist.minAxis,
+                    max: hist.maxAxis,
+                    afterBuildTicks: function(axis) {
+                        if (hist.ticks && hist.ticks.length > 0) {
+                            axis.ticks = hist.ticks.map(v => ({ value: v }));
+                        }
+                    },
+                    grid: {
+                        color: "rgba(140, 130, 117, 0.2)",
+                        lineWidth: 1
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        callback: function(value) {
+                            if (Math.abs(value) < 1e-12) return "0";
+                            const decimals = Math.max(2, Math.min(5, -Math.floor(Math.log10(hist.stepSize)) + 1));
+                            return Number(value).toFixed(decimals);
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "频数（独立区间数）" }
+                }
+            }
+        },
+        plugins: [lastChangeValueLinePlugin]
+    });
+}
+
+function renderUI(data) {
     const dates = data.map(x => x.date);
     const rates = data.map(x => x.rate);
     const latestRate = rates[rates.length - 1];
 
-    // 1. 文本摘要更新
-    document.getElementById("currentRate").textContent = latestRate.toFixed(4);
-    document.getElementById("dateRange").textContent = `数据区间：${dates[0]} → ${dates[dates.length - 1]}`;
-    document.getElementById("observationCount").textContent = `观测样本数：${data.length}`;
-    document.getElementById("trendStatus").textContent = statusText;
+    const maxK = Math.floor((data.length - 1) / MIN_INDEPENDENT_SAMPLES);
+    const allResults = [];
+    for (let k = 1; k <= maxK; k++) {
+        const changes = computeIndependentChanges(data, k);
+        if (changes.length >= MIN_INDEPENDENT_SAMPLES) {
+            allResults.push(bonferroniTestLastOneSided(changes, k, ALPHA));
+        }
+    }
 
-    // 2. 简洁的单线图表
+    // 选出右尾最显著的跨度：单侧 p 值最小（等价于 zLast 最大）
+    const mostSig = allResults.reduce((best, curr) => {
+        if (!best) return curr;
+        if (curr.pValue < best.pValue) return curr;
+        if (curr.pValue === best.pValue && curr.zLast > best.zLast) return curr;
+        return best;
+    }, null);
+
+    document.getElementById("currentRate").textContent = latestRate.toFixed(4);
+    document.getElementById("dateRange").textContent = `数据区间：${data[0].date} → ${data[data.length - 1].date}`;
+    document.getElementById("countsInfo").textContent =
+        `原始样本 N = ${data.length}，检验跨度 k = 1 ~ ${maxK} 天（最显著：k = ${mostSig.k} 天）`;
+
+    // 1. 汇率折线图
     new Chart(document.getElementById("rateChart"), {
         type: "line",
         data: {
@@ -267,8 +589,8 @@ function renderUI(data, statusText) {
                     borderColor: "#2f2a24",
                     borderWidth: 1.5,
                     pointRadius: 0,
-                    pointHoverRadius: 4, 
-                    pointHitRadius: 10,   
+                    pointHoverRadius: 4,
+                    pointHitRadius: 10,
                     tension: 0.1,
                     fill: false
                 }
@@ -276,11 +598,11 @@ function renderUI(data, statusText) {
         },
         options: {
             responsive: true,
-            events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
-            interaction: { 
-                intersect: false, 
+            events: ["mousemove", "mouseout", "click", "touchstart", "touchmove"],
+            interaction: {
+                intersect: false,
                 mode: "index",
-                axis: "x" 
+                axis: "x"
             },
             hover: {
                 mode: "index",
@@ -304,17 +626,37 @@ function renderUI(data, statusText) {
             }
         }
     });
+
+    // 2. 渲染最显著跨度的检验摘要与唯一直方图
+    renderMostSignificantHistogram(mostSig);
+
+    // 3. 填充总览表，高亮最显著跨度
+    const tbody = document.getElementById("summaryTableBody");
+    tbody.innerHTML = "";
+    for (const res of allResults) {
+        const isTop = res.k === mostSig.k;
+        const tr = document.createElement("tr");
+        if (isTop) tr.className = "top-row";
+        tr.innerHTML = `
+            <td>${res.k} 天${isTop ? " ★" : ""}</td>
+            <td>${res.m}</td>
+            <td>${res.last.prevDate} → ${res.last.date}</td>
+            <td>${fmtSigned(res.last.delta)}</td>
+            <td>${fmtSigned(res.mean)}</td>
+            <td>&gt; ${fmtSigned(res.deltaCrit)}</td>
+            <td>${res.zLast.toFixed(2)}</td>
+            <td class="${res.isSignificant ? "badge-sig" : "badge-nonsig"}">
+                ${res.isSignificant ? "显著偏高" : "不显著"}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
 }
 
 async function init() {
     try {
         const data = await fetchExchangeData();
-        const rates = data.map(x => x.rate);
-
-        const mkResult = sequentialMannKendall(rates);
-        const statusText = evaluateTrendStatus(mkResult);
-
-        renderUI(data, statusText);
+        renderUI(data);
     } catch (error) {
         console.error(error);
         document.getElementById("error").textContent = `无法加载汇率数据：${error.message}`;
